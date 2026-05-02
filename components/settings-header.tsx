@@ -71,13 +71,22 @@ export function SettingsHeader({ settings, presenceUsers, onSaldoChange, onRadar
             )}
           </div>
 
-          <button
-            onClick={onRadarOpen}
-            className="p-2 text-gray-400 hover:text-gray-700 transition-colors rounded-lg"
-            title="Radar"
-          >
-            <Radar size={20} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleLogout}
+              className="text-xs text-gray-400 hover:text-gray-600 transition-colors px-2 py-1"
+              title="Sair"
+            >
+              Sair
+            </button>
+            <button
+              onClick={onRadarOpen}
+              className="p-2 text-gray-400 hover:text-gray-700 transition-colors rounded-lg"
+              title="Radar"
+            >
+              <Radar size={20} />
+            </button>
+          </div>
         </div>
 
         {otherUsers.length > 0 && (
