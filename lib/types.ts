@@ -16,6 +16,15 @@ export interface Entry {
   updated_at: string
 }
 
+export interface RadarItem {
+  id: string
+  tipo: 'entrada' | 'saida'
+  item: string
+  previsao: string
+  valor: number
+  created_at: string
+}
+
 // A day row shown in the timeline (real entry or virtual empty day)
 export interface DayRow {
   date: string        // ISO YYYY-MM-DD

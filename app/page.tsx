@@ -7,8 +7,25 @@ import { SettingsHeader } from "@/components/settings-header"
 import { TimelineTable } from "@/components/timeline-table"
 import { EntryEditSheet } from "@/components/entry-edit-sheet"
 import { RangeManager } from "@/components/range-manager"
+import { RadarSheet } from "@/components/radar-sheet"
 import { Toaster } from "@/components/ui/sonner"
 import { toast } from "sonner"
+import { createClient as createSupabaseClient } from "@/lib/supabase/client"
+
+function LogoutButton() {
+  async function handleLogout() {
+    await createSupabaseClient().auth.signOut()
+    window.location.href = "/login"
+  }
+  return (
+    <button
+      onClick={handleLogout}
+      className="fixed bottom-20 left-4 z-20 text-xs text-gray-300 hover:text-gray-500 transition-colors py-1 px-2"
+    >
+      Sair
+    </button>
+  )
+}
 import { dateRange, isoToday } from "@/lib/utils"
 import type { Settings, Entry, DayRow } from "@/lib/types"
 import type { RealtimeChannel } from "@supabase/supabase-js"
@@ -52,6 +69,7 @@ export default function HomePage() {
   const [rows, setRows] = useState<DayRow[]>([])
   const [selectedRow, setSelectedRow] = useState<DayRow | null>(null)
   const [presenceUsers, setPresenceUsers] = useState<string[]>([])
+  const [radarOpen, setRadarOpen] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -217,9 +235,9 @@ export default function HomePage() {
     <div className="min-h-screen bg-gray-50">
       <SettingsHeader
         settings={settings}
-        rows={rows}
         presenceUsers={presenceUsers}
         onSaldoChange={handleSaldoChange}
+        onRadarOpen={() => setRadarOpen(true)}
       />
 
       <main className="pb-32">
@@ -239,6 +257,10 @@ export default function HomePage() {
         onClose={() => setSelectedRow(null)}
         onSave={handleSaveEntry}
       />
+
+      <RadarSheet open={radarOpen} onClose={() => setRadarOpen(false)} />
+
+      <LogoutButton />
 
       <Toaster />
     </div>

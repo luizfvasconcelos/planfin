@@ -4,6 +4,12 @@ import { formatBRL, formatDateBR, getDayOfWeek } from "@/lib/utils"
 import type { DayRow } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
+function isWeekend(date: string): boolean {
+  const [y, m, d] = date.split("-").map(Number)
+  const day = new Date(y, m - 1, d).getDay()
+  return day === 0 || day === 6
+}
+
 interface Props {
   rows: DayRow[]
   onRowClick: (row: DayRow) => void
@@ -11,78 +17,126 @@ interface Props {
 
 export function TimelineTable({ rows, onRowClick }: Props) {
   return (
-    <div className="max-w-2xl mx-auto px-2 py-3 space-y-1">
-      {rows.map((row) => (
-        <button
-          key={row.date}
-          onClick={() => onRowClick(row)}
-          className={cn(
-            "w-full text-left rounded-xl px-3 py-2.5 transition-colors active:scale-[0.99]",
-            row.isToday
-              ? "bg-blue-50 border border-blue-200 shadow-sm"
-              : row.isEmpty
-              ? "bg-white border border-transparent hover:bg-gray-50"
-              : "bg-white border border-gray-100 hover:bg-gray-50 shadow-sm"
-          )}
-        >
-          <div className="flex items-center gap-2">
-            {/* Date + weekday */}
-            <div className="w-20 shrink-0">
-              <p className={cn(
-                "text-xs font-medium",
-                row.isToday ? "text-blue-700" : "text-gray-500"
-              )}>
-                {getDayOfWeek(row.date)}
-              </p>
-              <p className={cn(
-                "text-sm font-semibold",
-                row.isToday ? "text-blue-800" : row.isEmpty ? "text-gray-400" : "text-gray-800"
-              )}>
-                {formatDateBR(row.date)}
-              </p>
-            </div>
+    <div className="max-w-2xl mx-auto py-3 relative">
+      {/* Linha vertical contínua — alinhada ao centro da coluna de dots (w-10 = 40px → left-5 = 20px) */}
+      <div className="absolute top-0 bottom-0 left-5 w-px bg-gray-200 pointer-events-none" />
 
-            {/* Entrada / Saída */}
-            <div className="flex-1 grid grid-cols-2 gap-1">
-              <div>
-                {row.entrada > 0 ? (
-                  <>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wide">Entrada</p>
-                    <p className="text-sm font-medium text-green-700">{formatBRL(row.entrada)}</p>
-                  </>
-                ) : (
-                  <p className="text-sm text-gray-200">—</p>
-                )}
+      {rows.map((row, index) => {
+        const weekend = isWeekend(row.date)
+        const negative = row.acumulado < 0
+        const prevNegative = index > 0 && rows[index - 1].acumulado < 0
+        const isBreakPoint = negative && !prevNegative
+
+        if (row.isEmpty) {
+          return (
+            <button
+              key={row.date}
+              onClick={() => onRowClick(row)}
+              className={cn(
+                "w-full flex items-center min-h-[44px] px-2 text-left",
+                weekend && "bg-gray-50/50"
+              )}
+            >
+              {/* Dot: outline, vazio */}
+              <div className="relative z-10 w-10 shrink-0 flex justify-center">
+                <div className={cn(
+                  "rounded-full border border-gray-300 bg-white",
+                  row.isToday ? "w-3 h-3 border-gray-500" : "w-2 h-2"
+                )} />
               </div>
-              <div>
-                {row.saida > 0 ? (
-                  <>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wide">Saída</p>
-                    <p className="text-sm font-medium text-orange-600">{formatBRL(row.saida)}</p>
-                  </>
-                ) : (
-                  <p className="text-sm text-gray-200">—</p>
-                )}
+
+              {/* Data */}
+              <div className="flex items-center gap-1.5">
+                <span className={cn(
+                  "text-xs",
+                  row.isToday ? "text-gray-600 font-medium" : "text-gray-300"
+                )}>
+                  {getDayOfWeek(row.date)}
+                </span>
+                <span className={cn(
+                  "text-sm",
+                  row.isToday ? "text-gray-700 font-semibold" : "text-gray-300"
+                )}>
+                  {formatDateBR(row.date)}
+                </span>
+              </div>
+            </button>
+          )
+        }
+
+        return (
+          <button
+            key={row.date}
+            onClick={() => onRowClick(row)}
+            className={cn(
+              "w-full flex flex-col min-h-[44px] px-2 py-2.5 text-left",
+              weekend ? "bg-gray-50/40" : "bg-white",
+              row.isToday ? "border-y border-gray-200" : "border-b border-gray-100/60"
+            )}
+          >
+            <div className="flex items-center w-full">
+              {/* Dot: sólido */}
+              <div className="relative z-10 w-10 shrink-0 flex justify-center">
+                <div className={cn(
+                  "rounded-full bg-gray-500",
+                  row.isToday ? "w-3.5 h-3.5 bg-gray-800" : "w-2.5 h-2.5"
+                )} />
+              </div>
+
+              {/* Data */}
+              <div className="w-[72px] shrink-0">
+                <p className={cn(
+                  "text-xs font-medium",
+                  negative ? "text-red-300" : row.isToday ? "text-gray-700" : "text-gray-500"
+                )}>
+                  {getDayOfWeek(row.date)}
+                </p>
+                <p className={cn(
+                  "text-sm font-semibold",
+                  negative ? "text-red-400" : row.isToday ? "text-gray-900" : "text-gray-800"
+                )}>
+                  {formatDateBR(row.date)} {isBreakPoint && "⚠️"}
+                </p>
+              </div>
+
+              {/* Entrada / Saída */}
+              <div className="flex-1 grid grid-cols-2 gap-1 px-1">
+                <div>
+                  {row.entrada > 0 && (
+                    <>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">Entrada</p>
+                      <p className="text-sm font-medium text-gray-800">{formatBRL(row.entrada)}</p>
+                    </>
+                  )}
+                </div>
+                <div>
+                  {row.saida > 0 && (
+                    <>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">Saída</p>
+                      <p className="text-sm font-medium text-gray-800">{formatBRL(row.saida)}</p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Saldo */}
+              <div className="text-right w-24 shrink-0">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Saldo</p>
+                <p className={cn(
+                  "text-sm font-semibold tabular-nums",
+                  negative ? "text-gray-900 font-bold" : "text-gray-600"
+                )}>
+                  {formatBRL(row.acumulado)}
+                </p>
               </div>
             </div>
 
-            {/* Acumulado */}
-            <div className="text-right w-24 shrink-0">
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide">Saldo</p>
-              <p className={cn(
-                "text-sm font-semibold tabular-nums",
-                row.acumulado < 0 ? "text-red-600" : "text-gray-800"
-              )}>
-                {formatBRL(row.acumulado)}
-              </p>
-            </div>
-          </div>
-
-          {row.descricao && (
-            <p className="mt-1 text-xs text-gray-400 truncate pl-20">{row.descricao}</p>
-          )}
-        </button>
-      ))}
+            {row.descricao && (
+              <p className="text-xs text-gray-400 truncate pl-10 pt-0.5">{row.descricao}</p>
+            )}
+          </button>
+        )
+      })}
     </div>
   )
 }

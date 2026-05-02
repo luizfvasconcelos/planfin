@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Eraser } from "lucide-react"
 import { formatDateBR, getDayOfWeek, parseDecimal } from "@/lib/utils"
 import type { DayRow } from "@/lib/types"
 
@@ -93,6 +94,14 @@ export function EntryEditSheet({ row, onClose, onSave }: Props) {
         </div>
 
         <SheetFooter className="mt-6 flex gap-2">
+          <button
+            onClick={() => { setEntrada(""); setSaida(""); setDescricao("") }}
+            className="p-2 text-gray-300 hover:text-gray-500 transition-colors rounded shrink-0"
+            title="Limpar tudo"
+            disabled={saving}
+          >
+            <Eraser size={16} />
+          </button>
           <Button variant="outline" className="flex-1" onClick={onClose} disabled={saving}>
             Cancelar
           </Button>

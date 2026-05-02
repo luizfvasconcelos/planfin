@@ -1,22 +1,28 @@
 "use client"
 
 import { useState, useRef } from "react"
+import { Radar } from "lucide-react"
 import { formatBRL, parseDecimal } from "@/lib/utils"
-import type { Settings, DayRow } from "@/lib/types"
+import { createClient } from "@/lib/supabase/client"
+import type { Settings } from "@/lib/types"
 
 interface Props {
   settings: Settings
-  rows: DayRow[]
   presenceUsers: string[]
   onSaldoChange: (value: number) => Promise<void>
+  onRadarOpen: () => void
 }
 
-export function SettingsHeader({ settings, rows, presenceUsers, onSaldoChange }: Props) {
+export function SettingsHeader({ settings, presenceUsers, onSaldoChange, onRadarOpen }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const saldoFinal = rows.length > 0 ? rows[rows.length - 1].acumulado : settings.saldo_inicial
+  async function handleLogout() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    window.location.href = "/login"
+  }
 
   function startEdit() {
     setDraft(String(settings.saldo_inicial).replace(".", ","))
@@ -43,7 +49,7 @@ export function SettingsHeader({ settings, rows, presenceUsers, onSaldoChange }:
     <header className="sticky top-0 z-20 bg-white border-b border-gray-100 shadow-sm">
       <div className="max-w-2xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-3">
-          <div>
+          <div className="flex-1">
             <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Saldo inicial</p>
             {editing ? (
               <input
@@ -65,16 +71,13 @@ export function SettingsHeader({ settings, rows, presenceUsers, onSaldoChange }:
             )}
           </div>
 
-          <div className="text-right">
-            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Saldo final projetado</p>
-            <p
-              className={`text-lg font-semibold ${
-                saldoFinal < 0 ? "text-red-600" : "text-green-700"
-              }`}
-            >
-              {formatBRL(saldoFinal)}
-            </p>
-          </div>
+          <button
+            onClick={onRadarOpen}
+            className="p-2 text-gray-400 hover:text-gray-700 transition-colors rounded-lg"
+            title="Radar"
+          >
+            <Radar size={20} />
+          </button>
         </div>
 
         {otherUsers.length > 0 && (

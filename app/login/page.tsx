@@ -1,14 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -28,19 +26,21 @@ export default function LoginPage() {
       return
     }
 
-    router.push("/")
-    router.refresh()
+    window.location.href = "/"
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div
+      className="min-h-screen flex items-end justify-center px-4 pb-16 bg-cover bg-center"
+      style={{ backgroundImage: "url('/login-bg.png')" }}
+    >
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">PlanFin</h1>
-          <p className="mt-1 text-sm text-gray-500">Controle de fluxo de caixa</p>
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-4 bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-white/60">
+          <div className="mb-2 text-center">
+            <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">PlanFin</h1>
+            <p className="text-xs text-gray-500">Controle de fluxo de caixa</p>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
             <Input
