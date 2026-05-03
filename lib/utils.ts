@@ -34,6 +34,13 @@ export function formatDateBR(date: string): string {
   return `${d}/${m}/${y}`
 }
 
+const SHORT_MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
+
+export function formatDateShort(date: string): string {
+  const [, m, d] = date.split("-").map(Number)
+  return `${String(d).padStart(2, "0")}/${SHORT_MONTHS[m - 1]}`
+}
+
 export function isoToday(): string {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`

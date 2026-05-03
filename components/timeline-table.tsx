@@ -1,6 +1,6 @@
 "use client"
 
-import { formatBRL, formatDateBR, getDayOfWeek } from "@/lib/utils"
+import { formatBRL, formatDateShort, getDayOfWeek } from "@/lib/utils"
 import type { DayRow } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -46,18 +46,18 @@ export function TimelineTable({ rows, onRowClick }: Props) {
               </div>
 
               {/* Data */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-baseline gap-1.5">
+                <span className={cn(
+                  "text-sm",
+                  row.isToday ? "text-gray-700 font-semibold" : "text-gray-300"
+                )}>
+                  {formatDateShort(row.date)}
+                </span>
                 <span className={cn(
                   "text-xs",
                   row.isToday ? "text-gray-600 font-medium" : "text-gray-300"
                 )}>
                   {getDayOfWeek(row.date)}
-                </span>
-                <span className={cn(
-                  "text-sm",
-                  row.isToday ? "text-gray-700 font-semibold" : "text-gray-300"
-                )}>
-                  {formatDateBR(row.date)}
                 </span>
               </div>
             </button>
@@ -74,57 +74,49 @@ export function TimelineTable({ rows, onRowClick }: Props) {
               row.isToday ? "border-y border-gray-200" : "border-b border-gray-100/60"
             )}
           >
+            {/* Linha 1: dot + data + dia da semana */}
             <div className="flex items-center w-full">
-              {/* Dot: sólido */}
               <div className="relative z-10 w-10 shrink-0 flex justify-center">
                 <div className={cn(
                   "rounded-full bg-gray-500",
                   row.isToday ? "w-3.5 h-3.5 bg-gray-800" : "w-2.5 h-2.5"
                 )} />
               </div>
-
-              {/* Data */}
-              <div className="w-[72px] shrink-0">
-                <p className={cn(
+              <div className="flex items-baseline gap-1.5">
+                <span className={cn(
+                  "text-sm font-semibold",
+                  negative ? "text-red-400" : row.isToday ? "text-gray-900" : "text-gray-800"
+                )}>
+                  {formatDateShort(row.date)} {isBreakPoint && "⚠️"}
+                </span>
+                <span className={cn(
                   "text-xs font-medium",
                   negative ? "text-red-300" : row.isToday ? "text-gray-700" : "text-gray-500"
                 )}>
                   {getDayOfWeek(row.date)}
-                </p>
-                <p className={cn(
-                  "text-sm font-semibold",
-                  negative ? "text-red-400" : row.isToday ? "text-gray-900" : "text-gray-800"
-                )}>
-                  {formatDateBR(row.date)} {isBreakPoint && "⚠️"}
-                </p>
+                </span>
               </div>
+            </div>
 
-              {/* Entrada / Saída */}
-              <div className="flex-1 grid grid-cols-2 gap-1 px-1">
+            {/* Linha 2: entrada / saída / saldo */}
+            <div className="flex items-start gap-4 pl-10 pt-1.5">
+              {row.entrada > 0 && (
                 <div>
-                  {row.entrada > 0 && (
-                    <>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">Entrada</p>
-                      <p className="text-sm font-medium text-gray-800">{formatBRL(row.entrada)}</p>
-                    </>
-                  )}
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide">Entrada</p>
+                  <p className="text-sm font-medium text-gray-800">{formatBRL(row.entrada)}</p>
                 </div>
+              )}
+              {row.saida > 0 && (
                 <div>
-                  {row.saida > 0 && (
-                    <>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">Saída</p>
-                      <p className="text-sm font-medium text-gray-800">{formatBRL(row.saida)}</p>
-                    </>
-                  )}
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide">Saída</p>
+                  <p className="text-sm font-medium text-gray-800">{formatBRL(row.saida)}</p>
                 </div>
-              </div>
-
-              {/* Saldo */}
-              <div className="text-right w-24 shrink-0">
+              )}
+              <div className="ml-auto text-right">
                 <p className="text-[10px] text-gray-400 uppercase tracking-wide">Saldo</p>
                 <p className={cn(
                   "text-sm font-semibold tabular-nums",
-                  negative ? "text-gray-900 font-bold" : "text-gray-600"
+                  negative ? "text-red-500 font-bold" : "text-gray-600"
                 )}>
                   {formatBRL(row.acumulado)}
                 </p>
@@ -132,7 +124,7 @@ export function TimelineTable({ rows, onRowClick }: Props) {
             </div>
 
             {row.descricao && (
-              <p className="text-xs text-gray-400 truncate pl-10 pt-0.5">{row.descricao}</p>
+              <p className="text-xs text-gray-400 truncate pl-10 pt-1.5">{row.descricao}</p>
             )}
           </button>
         )

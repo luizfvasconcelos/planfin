@@ -22,6 +22,7 @@ export interface RadarItem {
   item: string
   previsao: string
   valor: number
+  position: number
   created_at: string
 }
 
