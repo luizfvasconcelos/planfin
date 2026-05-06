@@ -52,6 +52,47 @@ export function addDays(iso: string, days: number): string {
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`
 }
 
+// Month string is "YYYY-MM"
+export function isoMonthOf(date: string): string {
+  return date.slice(0, 7)
+}
+
+export function isoMonthToday(): string {
+  return isoMonthOf(isoToday())
+}
+
+export function monthRange(month: string): { start: string; end: string } {
+  const [y, m] = month.split("-").map(Number)
+  const start = `${y}-${String(m).padStart(2, "0")}-01`
+  const lastDay = new Date(y, m, 0).getDate()
+  const end = `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`
+  return { start, end }
+}
+
+export function addMonths(month: string, delta: number): string {
+  const [y, m] = month.split("-").map(Number)
+  const total = y * 12 + (m - 1) + delta
+  const ny = Math.floor(total / 12)
+  const nm = (total % 12) + 1
+  return `${ny}-${String(nm).padStart(2, "0")}`
+}
+
+export function formatMonthShort(month: string): string {
+  const [y, m] = month.split("-").map(Number)
+  return `${SHORT_MONTHS[m - 1]}/${String(y).slice(-2)}`
+}
+
+export function formatMonthLong(month: string): string {
+  const [y, m] = month.split("-").map(Number)
+  const FULL = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+  return `${FULL[m - 1]} / ${y}`
+}
+
+export function formatDayMonth(date: string): { day: string; weekday: string } {
+  const [, , d] = date.split("-").map(Number)
+  return { day: String(d).padStart(2, "0"), weekday: getDayOfWeek(date) }
+}
+
 export function dateRange(start: string, end: string): string[] {
   const dates: string[] = []
   let current = start

@@ -1,6 +1,10 @@
+export type SaldoModo = 'atual' | 'projetado'
+
 export interface Settings {
   id: number
   saldo_inicial: number
+  saldo_projetado: number
+  saldo_modo: SaldoModo
   start_date: string
   end_date: string
   updated_at: string
@@ -13,6 +17,39 @@ export interface Entry {
   saida: number
   descricao: string
   updated_by: string | null
+  updated_at: string
+}
+
+export type DudaSlotTipo = 'diaria' | 'producao'
+
+export interface DudaAgendaSlot {
+  id: string
+  weekday: number  // 0=domingo
+  clinica_id: string
+  tipo: DudaSlotTipo
+  minimo: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface DudaEntry {
+  id: string
+  date: string
+  clinica_id: string
+  valor: number
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface DudaClinica {
+  id: string
+  nome: string
+  sigla: string | null
+  cor: string
+  position: number
+  ativa: boolean
+  created_at: string
   updated_at: string
 }
 
