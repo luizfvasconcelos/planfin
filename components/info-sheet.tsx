@@ -15,7 +15,7 @@ export function InfoSheet({ open, onClose }: Props) {
           <SheetTitle>Como funciona</SheetTitle>
         </SheetHeader>
 
-        <div className="pb-8 space-y-6 text-sm text-gray-700 leading-relaxed">
+        <div className="pb-8 space-y-6 leading-relaxed break-words">
           <Section title="Cálculo da projeção">
             <p>
               A média é calculada <strong>separadamente por tipo</strong> (Diária / Produção) dentro de cada clínica,
@@ -88,12 +88,39 @@ export function InfoSheet({ open, onClose }: Props) {
 
           <Section title="Remover uma clínica">
             <p>
-              <strong>O histórico é sempre preservado.</strong> Removeer aqui faz <em>soft delete</em> (marca como inativa, não apaga).
+              <strong>O histórico é sempre preservado.</strong> Remover aqui faz <em>soft delete</em> (marca como inativa, não apaga).
             </p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
               <li>Em <strong>meses passados</strong> com entradas: o card continua aparecendo (com nome, sigla e cor originais).</li>
               <li>Em <strong>mês atual e futuros</strong>: a clínica some dos cards e dos formulários de adicionar entrada/agenda.</li>
               <li>Os lançamentos antigos continuam no banco, vinculados ao UUID da clínica — não somem.</li>
+            </ul>
+          </Section>
+
+          <Section title="Editar uma clínica">
+            <p>
+              Tudo é referenciado pelo <strong>UUID</strong> (não pelo nome ou sigla), então qualquer alteração se propaga
+              automaticamente para todas as visualizações:
+            </p>
+            <ul className="list-disc pl-5 space-y-1 mt-2">
+              <li><strong>Cards</strong> (cor, sigla, nome) atualizam em todos os meses</li>
+              <li><strong>Tendência mensal</strong> (cor da linha, sigla na ponta, chips de filtro)</li>
+              <li><strong>Plano do mês</strong> (badges no calendário)</li>
+              <li><strong>Lista de entradas</strong> e <strong>Exportar mensagem</strong></li>
+              <li><strong>Agenda semanal</strong></li>
+            </ul>
+            <p>
+              O nome cadastrado hoje é o que aparece no histórico — então se a clínica mudou de nome, edite aqui e o histórico passa a usar o novo nome.
+            </p>
+          </Section>
+
+          <Section title="Exportar mensagem (📤)">
+            <p>
+              Botão de compartilhar no header. Copia uma mensagem formatada estilo WhatsApp para o clipboard.
+            </p>
+            <ul className="list-disc pl-5 space-y-1 mt-2">
+              <li><strong>Copiar tudo</strong>: o mês inteiro com sigla em cada linha (ex: <code className="text-xs bg-gray-100 px-1 rounded">07 Ter - PS: 214$</code>).</li>
+              <li><strong>Copiar [clínica]</strong>: só as entradas daquela clínica, <em>sem a sigla</em> (ex: <code className="text-xs bg-gray-100 px-1 rounded">07 Ter: 214$</code>) — pronto pra mandar pra patroa da clínica.</li>
             </ul>
           </Section>
 
@@ -116,8 +143,8 @@ export function InfoSheet({ open, onClose }: Props) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-      <div className="space-y-2 text-xs text-gray-600">{children}</div>
+      <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+      <div className="space-y-2 text-sm text-gray-700 leading-relaxed">{children}</div>
     </div>
   )
 }

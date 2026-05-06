@@ -5,6 +5,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { createClient } from "@/lib/supabase/client"
 import {
   addMonths,
+  cn,
   formatBRL,
   formatMonthShort,
   isoMonthOf,
@@ -73,6 +74,16 @@ export function TendenciasSheet({ open, onClose, clinicas }: Props) {
 
   const [entries, setEntries] = useState<RawEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
+
+  function toggleHidden(id: string) {
+    setHiddenIds((prev) => {
+      const n = new Set(prev)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
+      return n
+    })
+  }
 
   const months = useMemo(() => {
     const cur = isoMonthToday()
@@ -115,11 +126,18 @@ export function TendenciasSheet({ open, onClose, clinicas }: Props) {
     return m
   }, [months, entries])
 
-  const visibleClinicas = useMemo(() => {
+  // Clinics with data in the visible window (used for filter chips).
+  const candidateClinicas = useMemo(() => {
     return clinicas.filter((c) =>
       months.some((m) => (totals.get(m)?.get(c.id) ?? 0) > 0)
     )
   }, [clinicas, months, totals])
+
+  // Visible clinics = candidates that aren't hidden by user filter.
+  const visibleClinicas = useMemo(
+    () => candidateClinicas.filter((c) => !hiddenIds.has(c.id)),
+    [candidateClinicas, hiddenIds]
+  )
 
   const yMax = useMemo(() => {
     let max = 0
@@ -148,11 +166,9 @@ export function TendenciasSheet({ open, onClose, clinicas }: Props) {
   const formatLabel = (v: number) => Math.round(v).toLocaleString("pt-BR")
 
   // Per-(month, clinic) data label Y position with collision avoidance.
-  // Default = above point; if a label would overlap one already placed in
-  // this month column, push it down by MIN_GAP.
   const labelY = useMemo(() => {
     const map = new Map<string, number>()
-    const MIN_GAP = 11
+    const MIN_GAP = 13
     months.forEach((m, i) => {
       const items = visibleClinicas
         .map((c) => {
@@ -163,7 +179,7 @@ export function TendenciasSheet({ open, onClose, clinicas }: Props) {
         .sort((a, b) => a.y - b.y)
       let lastY = -Infinity
       for (const it of items) {
-        let y = it.y - 8
+        let y = it.y - 9
         if (y < lastY + MIN_GAP) y = lastY + MIN_GAP
         lastY = y
         map.set(`${i}-${it.id}`, y)
@@ -171,6 +187,35 @@ export function TendenciasSheet({ open, onClose, clinicas }: Props) {
     })
     return map
   }, [months, visibleClinicas, totals, yAt])
+
+  // Sigla Y position with collision avoidance (siglas anchored at first non-zero point).
+  const siglaY = useMemo(() => {
+    const map = new Map<string, number>()
+    const byIdx = new Map<number, { id: string; y: number }[]>()
+    for (const c of visibleClinicas) {
+      let firstIdx = -1
+      let firstY = 0
+      for (let i = 0; i < months.length; i++) {
+        const v = totals.get(months[i])?.get(c.id) ?? 0
+        if (v > 0) { firstIdx = i; firstY = yAt(v); break }
+      }
+      if (firstIdx < 0) continue
+      if (!byIdx.has(firstIdx)) byIdx.set(firstIdx, [])
+      byIdx.get(firstIdx)!.push({ id: c.id, y: firstY })
+    }
+    const MIN_GAP = 14
+    byIdx.forEach((items) => {
+      items.sort((a, b) => a.y - b.y)
+      let lastY = -Infinity
+      for (const it of items) {
+        let y = it.y
+        if (y < lastY + MIN_GAP) y = lastY + MIN_GAP
+        lastY = y
+        map.set(it.id, y)
+      }
+    })
+    return map
+  }, [visibleClinicas, months, totals, yAt])
 
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) onClose() }}>
@@ -182,10 +227,34 @@ export function TendenciasSheet({ open, onClose, clinicas }: Props) {
         <div className="pb-6">
           {loading ? (
             <p className="text-sm text-gray-400 text-center py-6">Carregando…</p>
-          ) : visibleClinicas.length === 0 ? (
+          ) : candidateClinicas.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-6">Sem dados ainda.</p>
           ) : (
             <>
+              {/* Filter chips */}
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {candidateClinicas.map((c) => {
+                  const hidden = hiddenIds.has(c.id)
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => toggleHidden(c.id)}
+                      className={cn(
+                        "text-xs font-semibold px-2.5 py-1 rounded-full border transition-all",
+                        hidden && "line-through opacity-50"
+                      )}
+                      style={{
+                        backgroundColor: hidden ? "#fff" : `${c.cor}1a`,
+                        color: hidden ? "#9ca3af" : c.cor,
+                        borderColor: hidden ? "#e5e7eb" : c.cor,
+                      }}
+                    >
+                      {c.sigla || c.nome}
+                    </button>
+                  )
+                })}
+              </div>
+
               <div className="bg-white rounded-xl border border-gray-100 p-2">
                 <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet">
                   {/* X labels (months) */}
@@ -195,7 +264,7 @@ export function TendenciasSheet({ open, onClose, clinicas }: Props) {
                       x={xAt(i)}
                       y={H - PAD.b + 14}
                       textAnchor="middle"
-                      fontSize={10}
+                      fontSize={11}
                       fill="#9ca3af"
                     >
                       {formatMonthShort(m)}
@@ -262,7 +331,7 @@ export function TendenciasSheet({ open, onClose, clinicas }: Props) {
                               x={p.x}
                               y={ly}
                               textAnchor="middle"
-                              fontSize={10}
+                              fontSize={11}
                               fontWeight={500}
                               fill={c.cor}
                             >
@@ -273,10 +342,10 @@ export function TendenciasSheet({ open, onClose, clinicas }: Props) {
                         {/* Sigla at start of line (first non-zero point) */}
                         <text
                           x={anchor.x - 6}
-                          y={anchor.y}
+                          y={siglaY.get(c.id) ?? anchor.y}
                           textAnchor="end"
                           dominantBaseline="middle"
-                          fontSize={12}
+                          fontSize={13}
                           fontWeight={700}
                           fill={c.cor}
                         >

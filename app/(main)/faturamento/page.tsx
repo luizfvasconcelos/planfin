@@ -6,7 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ChevronLeft, ChevronRight, Settings, CalendarClock, CalendarDays, TrendingUp, Info, Plus, X, Trash2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Settings, CalendarClock, CalendarDays, TrendingUp, Share2, Info, Plus, X, Trash2 } from "lucide-react"
 import { Toaster } from "@/components/ui/sonner"
 import { toast } from "sonner"
 import { ClinicasSheet } from "@/components/clinicas-sheet"
@@ -14,6 +14,7 @@ import { AgendaSheet } from "@/components/agenda-sheet"
 import { PlanoMesSheet } from "@/components/plano-mes-sheet"
 import { InfoSheet } from "@/components/info-sheet"
 import { TendenciasSheet } from "@/components/tendencias-sheet"
+import { ExportSheet } from "@/components/export-sheet"
 import {
   formatBRL,
   parseDecimal,
@@ -55,6 +56,7 @@ export default function FaturamentoPage() {
   const [planoOpen, setPlanoOpen] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
   const [tendenciasOpen, setTendenciasOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
 
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState<FormData>({ date: isoToday(), clinica_id: "", valor: "" })
@@ -227,6 +229,14 @@ export default function FaturamentoPage() {
                 title="Tendência mensal"
               >
                 <TrendingUp size={20} />
+              </button>
+              <button
+                onClick={() => setExportOpen(true)}
+                disabled={entries.length === 0}
+                className="p-2 text-gray-400 hover:text-gray-700 transition-colors rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Exportar mensagem"
+              >
+                <Share2 size={20} />
               </button>
               <button
                 onClick={() => setPlanoOpen(true)}
@@ -517,6 +527,14 @@ export default function FaturamentoPage() {
         open={tendenciasOpen}
         onClose={() => setTendenciasOpen(false)}
         clinicas={clinicas}
+      />
+
+      <ExportSheet
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        month={month}
+        clinicas={clinicas}
+        entries={entries}
       />
 
       <Toaster />
