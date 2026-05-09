@@ -98,21 +98,25 @@ export function TimelineTable({ rows, onRowClick }: Props) {
               </div>
             </div>
 
-            {/* Linha 2: entrada / saída / saldo */}
-            <div className="flex items-start gap-4 pl-10 pt-1.5">
-              {row.entrada > 0 && (
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide">Entrada</p>
-                  <p className="text-sm font-medium text-gray-800">{formatBRL(row.entrada)}</p>
-                </div>
-              )}
-              {row.saida > 0 && (
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide">Saída</p>
-                  <p className="text-sm font-medium text-gray-800">{formatBRL(row.saida)}</p>
-                </div>
-              )}
-              <div className="ml-auto text-right">
+            {/* Linha 2: entrada / saída / saldo — grid fixo pra preservar colunas mesmo quando uma delas está vazia */}
+            <div className="grid grid-cols-[1fr_1fr_auto] items-start gap-4 pl-10 pt-1.5">
+              <div>
+                {row.entrada > 0 && (
+                  <>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide">Entrada</p>
+                    <p className="text-sm font-medium text-gray-800">{formatBRL(row.entrada)}</p>
+                  </>
+                )}
+              </div>
+              <div>
+                {row.saida > 0 && (
+                  <>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide">Saída</p>
+                    <p className="text-sm font-medium text-gray-800">{formatBRL(row.saida)}</p>
+                  </>
+                )}
+              </div>
+              <div className="text-right">
                 <p className="text-[10px] text-gray-400 uppercase tracking-wide">Saldo</p>
                 <p className={cn(
                   "text-sm font-semibold tabular-nums",
