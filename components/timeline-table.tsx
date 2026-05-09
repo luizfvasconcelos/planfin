@@ -105,6 +105,9 @@ export function TimelineTable({ rows, onRowClick }: Props) {
                   <>
                     <p className="text-[10px] text-gray-400 uppercase tracking-wide">Entrada</p>
                     <p className="text-sm font-medium text-gray-800">{formatBRL(row.entrada)}</p>
+                    {row.descricao && row.saida === 0 && (
+                      <p className="text-xs text-gray-400 truncate pt-1">{row.descricao}</p>
+                    )}
                   </>
                 )}
               </div>
@@ -113,6 +116,9 @@ export function TimelineTable({ rows, onRowClick }: Props) {
                   <>
                     <p className="text-[10px] text-gray-400 uppercase tracking-wide">Saída</p>
                     <p className="text-sm font-medium text-gray-800">{formatBRL(row.saida)}</p>
+                    {row.descricao && row.entrada === 0 && (
+                      <p className="text-xs text-gray-400 truncate pt-1">{row.descricao}</p>
+                    )}
                   </>
                 )}
               </div>
@@ -127,7 +133,7 @@ export function TimelineTable({ rows, onRowClick }: Props) {
               </div>
             </div>
 
-            {row.descricao && (
+            {row.descricao && row.entrada > 0 && row.saida > 0 && (
               <p className="text-xs text-gray-400 truncate pl-10 pt-1.5">{row.descricao}</p>
             )}
           </button>
