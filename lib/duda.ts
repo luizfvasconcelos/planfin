@@ -1,4 +1,4 @@
-import { dateRange, monthRange, isoToday } from "@/lib/utils"
+import { addDays, dateRange, monthRange, isoToday } from "@/lib/utils"
 import type { DudaAgendaSlot, DudaClinica, DudaEntry } from "@/lib/types"
 
 export interface ClinicaStats {
@@ -87,10 +87,19 @@ export function computeClinicaStats(
   const agendaDays = agendaDateInfos.length
 
   const entryDates = new Set(clinicaEntries.map((e) => e.date))
-  const today = isoToday()
-  // Only future agenda days that haven't been logged count as "remaining"
-  // (past agenda days without entries are treated as missed, not projected)
-  const remaining = agendaDateInfos.filter((a) => !entryDates.has(a.date) && a.date >= today)
+  // Project agenda days that come AFTER the last logged entry for this clinic
+  // (or today, if there are no logs yet). Days before the last log are assumed
+  // "skipped" (she didn't work — e.g. holiday) since she's already moved past
+  // them by logging later days; otherwise old missed days would silently
+  // inflate the projection. Unlogged days after the last log are still
+  // projected, so a freshly-passed day she hasn't entered yet stays neutral.
+  const lastLoggedDate = clinicaEntries.length > 0
+    ? clinicaEntries.reduce((max, e) => (e.date > max ? e.date : max), "")
+    : null
+  const cutoff = lastLoggedDate ?? addDays(isoToday(), -1)
+  const remaining = agendaDateInfos.filter(
+    (a) => !entryDates.has(a.date) && a.date > cutoff,
+  )
   const remainingDays = remaining.length
 
   let projetado = total
