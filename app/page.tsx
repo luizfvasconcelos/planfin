@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { CalendarDays } from "lucide-react"
+import { CalendarDays, Receipt } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 export default function HomePage() {
@@ -45,6 +45,19 @@ export default function HomePage() {
           <div className="flex-1">
             <h2 className="text-lg font-semibold text-gray-900">Timeline</h2>
             <p className="text-sm text-gray-500">Fluxo de caixa diário</p>
+          </div>
+        </Link>
+
+        <Link
+          href="/contas-fixas"
+          className="group bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-amber-200 transition-all px-6 py-7 flex items-center gap-5"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:bg-amber-100 transition-colors">
+            <Receipt size={28} />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-gray-900">Contas Fixas</h2>
+            <p className="text-sm text-gray-500">Despesas recorrentes</p>
           </div>
         </Link>
 
