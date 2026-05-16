@@ -11,7 +11,7 @@ import { ContasArquivadasSheet } from "@/components/contas-arquivadas-sheet"
 import { ContasFixasTable } from "@/components/contas-fixas-table"
 import { ContasFixasChart } from "@/components/contas-fixas-chart"
 import { ContasFixasStatusCard } from "@/components/contas-fixas-status-card"
-import { addMonths, isoMonthToday } from "@/lib/utils"
+import { addMonths, formatMonthShort, isoMonthToday } from "@/lib/utils"
 import {
   isoToMes,
   mesToISO,
@@ -73,6 +73,18 @@ export default function ContasFixasPage() {
     () => monthsBetween(mesInicio, mesFim),
     [mesInicio, mesFim]
   )
+
+  // Opções do seletor: de MIN_MONTH até 10 anos no futuro.
+  const monthOptions = useMemo(() => {
+    const opts: string[] = []
+    let cur = MIN_MONTH
+    const end = addMonths(isoMonthToday(), 120)
+    while (cur <= end) {
+      opts.push(cur)
+      cur = addMonths(cur, 1)
+    }
+    return opts
+  }, [])
 
   const fetchAll = useCallback(async () => {
     const [contasRes, vigenciasRes, celulasRes] = await Promise.all([
@@ -221,24 +233,31 @@ export default function ContasFixasPage() {
           <div className="mt-2 flex items-center justify-center gap-2 text-xs text-gray-600">
             <label className="flex items-center gap-1">
               <span className="text-gray-400">De</span>
-              <input
-                type="month"
+              <select
                 value={mesInicio}
-                min={MIN_MONTH}
-                max={mesFim}
                 onChange={(e) => setMesInicio(e.target.value)}
-                className="text-xs border border-gray-200 rounded px-1.5 py-0.5 tabular-nums"
-              />
+                className="text-xs border border-gray-200 rounded px-1.5 py-0.5 tabular-nums capitalize bg-white"
+              >
+                {monthOptions
+                  .filter((m) => m <= mesFim)
+                  .map((m) => (
+                    <option key={m} value={m}>{formatMonthShort(m)}</option>
+                  ))}
+              </select>
             </label>
             <label className="flex items-center gap-1">
               <span className="text-gray-400">até</span>
-              <input
-                type="month"
+              <select
                 value={mesFim}
-                min={mesInicio < MIN_MONTH ? MIN_MONTH : mesInicio}
                 onChange={(e) => setMesFim(e.target.value)}
-                className="text-xs border border-gray-200 rounded px-1.5 py-0.5 tabular-nums"
-              />
+                className="text-xs border border-gray-200 rounded px-1.5 py-0.5 tabular-nums capitalize bg-white"
+              >
+                {monthOptions
+                  .filter((m) => m >= mesInicio)
+                  .map((m) => (
+                    <option key={m} value={m}>{formatMonthShort(m)}</option>
+                  ))}
+              </select>
             </label>
           </div>
         </div>
