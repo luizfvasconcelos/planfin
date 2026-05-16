@@ -25,6 +25,8 @@ import type {
 } from "@/lib/types"
 
 const MIN_MONTH = "2026-05"
+const LS_KEY_START = "planfin.contas-fixas.mesInicio"
+const LS_KEY_END = "planfin.contas-fixas.mesFim"
 
 export default function ContasFixasPage() {
   const supabaseRef = useRef<SupabaseClient | null>(null)
@@ -37,6 +39,27 @@ export default function ContasFixasPage() {
   const startDefault = today < MIN_MONTH ? MIN_MONTH : today
   const [mesInicio, setMesInicio] = useState<string>(startDefault)
   const [mesFim, setMesFim] = useState<string>(addMonths(startDefault, 11))
+  const hydratedRef = useRef(false)
+
+  // Lê os valores salvos no localStorage uma vez na montagem.
+  useEffect(() => {
+    const savedStart = localStorage.getItem(LS_KEY_START)
+    if (savedStart && savedStart >= MIN_MONTH) setMesInicio(savedStart)
+    const savedEnd = localStorage.getItem(LS_KEY_END)
+    if (savedEnd && savedEnd >= MIN_MONTH) setMesFim(savedEnd)
+    hydratedRef.current = true
+  }, [])
+
+  // Persiste mudanças (depois de hidratar, pra não sobrescrever com o default).
+  useEffect(() => {
+    if (!hydratedRef.current) return
+    localStorage.setItem(LS_KEY_START, mesInicio)
+  }, [mesInicio])
+
+  useEffect(() => {
+    if (!hydratedRef.current) return
+    localStorage.setItem(LS_KEY_END, mesFim)
+  }, [mesFim])
 
   const [contas, setContas] = useState<ContaFixa[]>([])
   const [vigencias, setVigencias] = useState<ContaFixaVigencia[]>([])
