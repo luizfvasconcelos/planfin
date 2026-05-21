@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, CalendarDays, Receipt } from "lucide-react"
+import { Home, CalendarDays, Receipt, Wallet, Target } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 interface Tab {
@@ -16,6 +16,8 @@ const tabs: Tab[] = [
   { href: "/", label: "Home", icon: Home },
   { href: "/timeline", label: "Timeline", icon: CalendarDays },
   { href: "/contas-fixas", label: "Fixas", icon: Receipt },
+  { href: "/gastos", label: "Gastos", icon: Wallet },
+  { href: "/orcamento", label: "Orçamento", icon: Target },
   { href: "/faturamento", label: "Duda", avatarSrc: "/duda.png" },
 ]
 

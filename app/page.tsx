@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { CalendarDays, Receipt } from "lucide-react"
+import { CalendarDays, Receipt, Wallet, Target } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 export default function HomePage() {
@@ -58,6 +58,32 @@ export default function HomePage() {
           <div className="flex-1">
             <h2 className="text-lg font-semibold text-gray-900">Contas Fixas</h2>
             <p className="text-sm text-gray-500">Despesas recorrentes</p>
+          </div>
+        </Link>
+
+        <Link
+          href="/gastos"
+          className="group bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-purple-200 transition-all px-6 py-7 flex items-center gap-5"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 group-hover:bg-purple-100 transition-colors">
+            <Wallet size={28} />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-gray-900">Gastos Variáveis</h2>
+            <p className="text-sm text-gray-500">Registro do dia-a-dia</p>
+          </div>
+        </Link>
+
+        <Link
+          href="/orcamento"
+          className="group bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-rose-200 transition-all px-6 py-7 flex items-center gap-5"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 group-hover:bg-rose-100 transition-colors">
+            <Target size={28} />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-gray-900">Orçamento</h2>
+            <p className="text-sm text-gray-500">Teto por período</p>
           </div>
         </Link>
 

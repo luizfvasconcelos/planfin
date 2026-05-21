@@ -92,6 +92,53 @@ export interface ContaFixaCelula {
   updated_at: string
 }
 
+export type ResponsavelGasto = 'luiz' | 'duda' | 'casal'
+
+export interface CategoriaGasto {
+  id: string
+  nome: string
+  cor: string
+  icone: string | null
+  position: number
+  ativa: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface FormaPagamento {
+  id: string
+  nome: string
+  cor: string
+  icone: string | null
+  position: number
+  ativa: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface GastoVariavel {
+  id: string
+  date: string  // YYYY-MM-DD
+  valor: number
+  categoria_id: string
+  forma_pagamento_id: string
+  responsavel: ResponsavelGasto
+  descricao: string | null
+  excluido_orcamento: boolean
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Orcamento {
+  id: string
+  data_inicio: string  // YYYY-MM-DD
+  data_fim: string     // YYYY-MM-DD
+  valor_teto: number
+  created_at: string
+  updated_at: string
+}
+
 // A day row shown in the timeline (real entry or virtual empty day)
 export interface DayRow {
   date: string        // ISO YYYY-MM-DD
