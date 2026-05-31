@@ -24,6 +24,7 @@ import {
   monthRange,
   addMonths,
   formatMonthLong,
+  formatMonthShort,
   formatDayMonth,
   cn,
 } from "@/lib/utils"
@@ -31,11 +32,29 @@ import { computeClinicaStats } from "@/lib/duda"
 import type { DudaClinica, DudaEntry, DudaAgendaSlot } from "@/lib/types"
 
 const MIN_MONTH = "2026-01"
+const PRAZO_OPTIONS = [0, 1, 2] as const
+const PRAZO_LABELS: Record<number, string> = { 0: "À vista", 1: "1m", 2: "2m" }
 
-interface FormData {
+interface SplitRow {
+  valor: string
+  meses: number
+}
+
+interface AddFormData {
+  date: string
+  clinica_id: string
+  rows: SplitRow[]
+}
+
+interface EditFormData {
   date: string
   clinica_id: string
   valor: string
+  meses: number
+}
+
+function mesRecebimentoOf(entry: DudaEntry): string {
+  return addMonths(isoMonthOf(entry.date), entry.meses_recebimento)
 }
 
 export default function FaturamentoPage() {
@@ -48,6 +67,9 @@ export default function FaturamentoPage() {
   const [month, setMonth] = useState<string>(isoMonthToday())
   const [clinicas, setClinicas] = useState<DudaClinica[]>([])
   const [entries, setEntries] = useState<DudaEntry[]>([])
+  // Entries lançadas em (month-2) com meses_recebimento=2 que caem neste mês.
+  // Dá visibilidade do M-2 chegando, sem misturar com o faturamento do mês.
+  const [entriesM2In, setEntriesM2In] = useState<DudaEntry[]>([])
   const [agenda, setAgenda] = useState<DudaAgendaSlot[]>([])
   const [daysOff, setDaysOff] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -59,11 +81,20 @@ export default function FaturamentoPage() {
   const [exportOpen, setExportOpen] = useState(false)
 
   const [adding, setAdding] = useState(false)
-  const [form, setForm] = useState<FormData>({ date: isoToday(), clinica_id: "", valor: "" })
+  const [addForm, setAddForm] = useState<AddFormData>({
+    date: isoToday(),
+    clinica_id: "",
+    rows: [{ valor: "", meses: 0 }],
+  })
   const [saving, setSaving] = useState(false)
 
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState<FormData>({ date: "", clinica_id: "", valor: "" })
+  const [editForm, setEditForm] = useState<EditFormData>({
+    date: "",
+    clinica_id: "",
+    valor: "",
+    meses: 0,
+  })
   const [confirmId, setConfirmId] = useState<string | null>(null)
 
   const fetchClinicas = useCallback(async () => {
@@ -96,6 +127,17 @@ export default function FaturamentoPage() {
     setLoading(false)
   }, [sb, month])
 
+  const fetchEntriesM2In = useCallback(async () => {
+    const { start, end } = monthRange(addMonths(month, -2))
+    const { data } = await sb()
+      .from("duda_entries")
+      .select("*")
+      .gte("date", start)
+      .lte("date", end)
+      .eq("meses_recebimento", 2)
+    setEntriesM2In((data as DudaEntry[] | null) ?? [])
+  }, [sb, month])
+
   const fetchDaysOff = useCallback(async () => {
     const { start, end } = monthRange(month)
     const { data } = await sb()
@@ -109,6 +151,7 @@ export default function FaturamentoPage() {
   useEffect(() => { fetchClinicas() }, [fetchClinicas])
   useEffect(() => { fetchAgenda() }, [fetchAgenda])
   useEffect(() => { fetchEntries() }, [fetchEntries])
+  useEffect(() => { fetchEntriesM2In() }, [fetchEntriesM2In])
   useEffect(() => { fetchDaysOff() }, [fetchDaysOff])
 
   const clinicaById = useCallback(
@@ -129,26 +172,47 @@ export default function FaturamentoPage() {
   const totalMonth = entries.reduce((sum, e) => sum + Number(e.valor), 0)
   const totalProjetado = statsByClinica.reduce((s, st) => s + st.projetado, 0)
 
+  const hasGlobalSplit = entries.some((e) => e.meses_recebimento > 0)
+  const recebimentoTotalByMes = new Map<string, number>()
+  if (hasGlobalSplit) {
+    for (const e of entries) {
+      const mes = mesRecebimentoOf(e)
+      recebimentoTotalByMes.set(mes, (recebimentoTotalByMes.get(mes) ?? 0) + Number(e.valor))
+    }
+  }
+  const recebimentoTotalList = Array.from(recebimentoTotalByMes.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+
+  const totalM2In = entriesM2In.reduce((s, e) => s + Number(e.valor), 0)
+  const m2OriginMonth = addMonths(month, -2)
+
   async function handleAdd() {
-    if (!form.clinica_id) { toast.error("Selecione uma clínica"); return }
-    if (!form.date) { toast.error("Selecione a data"); return }
-    if (isoMonthOf(form.date) !== month) { toast.error("A data está fora do mês visualizado"); return }
+    if (!addForm.clinica_id) { toast.error("Selecione uma clínica"); return }
+    if (!addForm.date) { toast.error("Selecione a data"); return }
+    if (isoMonthOf(addForm.date) !== month) { toast.error("A data está fora do mês visualizado"); return }
+    const linhas = addForm.rows
+      .map((r) => ({ valor: parseDecimal(r.valor), meses: r.meses }))
+      .filter((r) => r.valor > 0)
+    if (linhas.length === 0) { toast.error("Informe ao menos um valor"); return }
     setSaving(true)
     const { data: { user } } = await sb().auth.getUser()
+    const inserts = linhas.map((l) => ({
+      date: addForm.date,
+      clinica_id: addForm.clinica_id,
+      valor: l.valor,
+      meses_recebimento: l.meses,
+      updated_by: user?.id,
+    }))
     const { data, error } = await sb()
       .from("duda_entries")
-      .insert({
-        date: form.date,
-        clinica_id: form.clinica_id,
-        valor: parseDecimal(form.valor),
-        updated_by: user?.id,
-      })
+      .insert(inserts)
       .select()
-      .single()
     if (error) toast.error("Erro ao salvar entrada")
     else if (data) {
-      setEntries((prev) => [...prev, data as DudaEntry].sort((a, b) => a.date.localeCompare(b.date)))
-      setForm({ date: form.date, clinica_id: "", valor: "" })
+      setEntries((prev) =>
+        [...prev, ...(data as DudaEntry[])].sort((a, b) => a.date.localeCompare(b.date))
+      )
+      setAddForm({ date: addForm.date, clinica_id: "", rows: [{ valor: "", meses: 0 }] })
       setAdding(false)
     }
     setSaving(false)
@@ -161,6 +225,7 @@ export default function FaturamentoPage() {
       date: e.date,
       clinica_id: e.clinica_id,
       valor: String(e.valor).replace(".", ","),
+      meses: e.meses_recebimento,
     })
   }
 
@@ -170,12 +235,14 @@ export default function FaturamentoPage() {
     setSaving(true)
     const { data: { user } } = await sb().auth.getUser()
     const valor = parseDecimal(editForm.valor)
+    const meses_recebimento = editForm.meses
     const { error } = await sb()
       .from("duda_entries")
       .update({
         date: editForm.date,
         clinica_id: editForm.clinica_id,
         valor,
+        meses_recebimento,
         updated_by: user?.id,
       })
       .eq("id", editingId)
@@ -184,7 +251,7 @@ export default function FaturamentoPage() {
       setEntries((prev) =>
         prev
           .map((e) => (e.id === editingId
-            ? { ...e, date: editForm.date, clinica_id: editForm.clinica_id, valor }
+            ? { ...e, date: editForm.date, clinica_id: editForm.clinica_id, valor, meses_recebimento }
             : e))
           .filter((e) => isoMonthOf(e.date) === month)
           .sort((a, b) => a.date.localeCompare(b.date))
@@ -296,7 +363,27 @@ export default function FaturamentoPage() {
         {/* Cards by clinic */}
         {statsByClinica.length > 0 && (
           <div className="grid grid-cols-2 gap-2">
-            {statsByClinica.map((st) => (
+            {statsByClinica.map((st) => {
+              const entriesClinica = entries.filter((e) => e.clinica_id === st.clinica.id)
+              const hasSplit = entriesClinica.some((e) => e.meses_recebimento > 0)
+              const recebimentoByMes = new Map<string, number>()
+              if (hasSplit) {
+                for (const e of entriesClinica) {
+                  const mes = mesRecebimentoOf(e)
+                  recebimentoByMes.set(mes, (recebimentoByMes.get(mes) ?? 0) + Number(e.valor))
+                }
+              }
+              const recebimentoList = Array.from(recebimentoByMes.entries())
+                .sort(([a], [b]) => a.localeCompare(b))
+
+              const m2InClinica = entriesM2In.filter((e) => e.clinica_id === st.clinica.id)
+              const m2InTotal = m2InClinica.reduce((s, e) => s + Number(e.valor), 0)
+              const hasM2In = m2InClinica.length > 0
+              const showRecebimento = hasSplit || hasM2In
+
+              const showCaixa = st.hasAgenda && !isPastMonth
+
+              return (
               <div
                 key={st.clinica.id}
                 className="bg-white rounded-xl border border-gray-100 px-3 py-3"
@@ -310,6 +397,10 @@ export default function FaturamentoPage() {
                     {st.clinica.sigla || st.clinica.nome}
                   </p>
                 </div>
+
+                <p className="text-[9px] text-gray-400 uppercase tracking-wider font-medium">
+                  Faturamento
+                </p>
                 <p className="text-base font-bold text-gray-900 tabular-nums">
                   {formatBRL(st.total)}
                 </p>
@@ -319,30 +410,73 @@ export default function FaturamentoPage() {
                     ? ` · agenda ${st.agendaDays}`
                     : <span className="italic"> · sob demanda</span>}
                 </p>
-                {st.hasAgenda && !isPastMonth && (
+                {st.count > 0 && (
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[10px] text-gray-500">Média/dia</span>
+                    <span className="text-xs font-medium text-gray-700 tabular-nums">
+                      {formatBRL(st.avg)}
+                    </span>
+                  </div>
+                )}
+
+                {showCaixa && (
                   <div className="mt-2 pt-2 border-t border-gray-100 space-y-0.5">
-                    <div className="flex justify-between items-baseline">
-                      <span className="text-[10px] text-gray-400 uppercase tracking-wide">Média</span>
-                      <span className="text-xs font-medium text-gray-700 tabular-nums">
-                        {formatBRL(st.avg)}
-                      </span>
-                    </div>
+                    <p className="text-[9px] text-gray-400 uppercase tracking-wider font-medium">
+                      Projeção de caixa <span className="text-gray-300 normal-case tracking-normal">· sem M+2</span>
+                    </p>
                     {st.projetavel ? (
-                      <div className="flex justify-between items-baseline">
-                        <span className="text-[10px] text-gray-400 uppercase tracking-wide">Projeção</span>
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-[10px] text-gray-500">Fim de mês</span>
                         <span className="text-xs font-semibold tabular-nums" style={{ color: st.clinica.cor }}>
                           {formatBRL(st.projetado)}
                         </span>
                       </div>
                     ) : (
-                      <p className="text-[10px] italic text-gray-400 leading-tight pt-0.5">
+                      <p className="text-[10px] italic text-gray-400 leading-tight">
                         Amostra pequena pra projetar
                       </p>
                     )}
+                    {st.avgProj > 0 && (
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-[10px] text-gray-500">Média/dia</span>
+                        <span className="text-xs font-medium text-gray-700 tabular-nums">
+                          {formatBRL(st.avgProj)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {showRecebimento && (
+                  <div className="mt-2 pt-2 border-t border-gray-100 space-y-0.5">
+                    <p className="text-[9px] text-gray-400 uppercase tracking-wider font-medium">
+                      Recebimento
+                    </p>
+                    {hasM2In && (
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-[10px] text-gray-500 tabular-nums">
+                          ← {formatMonthShort(m2OriginMonth)}
+                        </span>
+                        <span className="text-xs font-medium text-gray-700 tabular-nums">
+                          {formatBRL(m2InTotal)}
+                        </span>
+                      </div>
+                    )}
+                    {recebimentoList.map(([mes, valor]) => (
+                      <div key={mes} className="flex justify-between items-baseline">
+                        <span className="text-[10px] text-gray-500 tabular-nums">
+                          {formatMonthShort(mes)}
+                        </span>
+                        <span className="text-xs font-medium text-gray-700 tabular-nums">
+                          {formatBRL(valor)}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
 
@@ -414,6 +548,11 @@ export default function FaturamentoPage() {
                     >
                       {c?.sigla || c?.nome || "?"}
                     </span>
+                    {e.meses_recebimento >= 2 && (
+                      <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                        → {formatMonthShort(mesRecebimentoOf(e))}
+                      </span>
+                    )}
                     <span className="flex-1" />
                     <span className="text-sm font-medium text-gray-900 tabular-nums">
                       {formatBRL(Number(e.valor))}
@@ -425,40 +564,160 @@ export default function FaturamentoPage() {
           )}
 
           {/* Total */}
-          {entries.length > 0 && (
-            <div className="border-t border-gray-200 mt-1 py-3 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-700">Total</span>
-                <span className="text-base font-bold text-gray-900 tabular-nums">
-                  {formatBRL(totalMonth)}
-                </span>
-              </div>
-              {(() => {
-                const someUnprojectable = statsByClinica.some(
-                  (st) => st.hasAgenda && !st.projetavel
-                )
-                const showTotalProj =
-                  !isPastMonth &&
-                  agenda.length > 0 &&
-                  totalProjetado > totalMonth &&
-                  !someUnprojectable
-                return showTotalProj && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-400 uppercase tracking-wide">Projeção fim de mês</span>
-                    <span className="text-sm font-semibold text-gray-700 tabular-nums">
-                      {formatBRL(totalProjetado)}
-                    </span>
+          {(entries.length > 0 || entriesM2In.length > 0) && (() => {
+            const someUnprojectable = statsByClinica.some(
+              (st) => st.hasAgenda && !st.projetavel
+            )
+            // Mostra a projeção sempre que ela difere do total faturado —
+            // seja por dias futuros estimados ou por entries M+2 que foram
+            // excluídas do cálculo de caixa planejável.
+            const showTotalProj =
+              !isPastMonth &&
+              agenda.length > 0 &&
+              totalProjetado !== totalMonth &&
+              !someUnprojectable
+            return (
+              <div className="border-t border-gray-200 mt-1 py-3 space-y-2">
+                {entries.length > 0 && (
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">
+                      Faturamento
+                    </p>
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-sm text-gray-500">Total do mês</span>
+                      <span className="text-base font-bold text-gray-900 tabular-nums">
+                        {formatBRL(totalMonth)}
+                      </span>
+                    </div>
                   </div>
-                )
-              })()}
-            </div>
-          )}
+                )}
+                {showTotalProj && (
+                  <div className="pt-2 border-t border-gray-100">
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">
+                      Projeção de caixa <span className="text-gray-300 normal-case tracking-normal">· sem M+2</span>
+                    </p>
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-sm text-gray-500">Fim de mês</span>
+                      <span className="text-sm font-semibold text-gray-700 tabular-nums">
+                        {formatBRL(totalProjetado)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {(hasGlobalSplit || entriesM2In.length > 0) && (
+                  <div className="pt-2 border-t border-gray-100 space-y-0.5">
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">
+                      Recebimento
+                    </p>
+                    {entriesM2In.length > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-500 tabular-nums">
+                          ← {formatMonthShort(m2OriginMonth)}
+                        </span>
+                        <span className="text-xs font-medium text-gray-700 tabular-nums">
+                          {formatBRL(totalM2In)}
+                        </span>
+                      </div>
+                    )}
+                    {recebimentoTotalList.map(([mes, valor]) => (
+                      <div key={mes} className="flex items-center justify-between">
+                        <span className="text-xs text-gray-500 tabular-nums">
+                          {formatMonthShort(mes)}
+                        </span>
+                        <span className="text-xs font-medium text-gray-700 tabular-nums">
+                          {formatBRL(valor)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
 
         {/* Add entry */}
         {adding ? (
           <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
-            <EntryForm form={form} setForm={setForm} clinicas={clinicas} />
+            <div className="space-y-1">
+              <Label className="text-xs">Data</Label>
+              <Input
+                type="date"
+                value={addForm.date}
+                onChange={(e) => setAddForm((f) => ({ ...f, date: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Clínica</Label>
+              <ClinicaChips
+                clinicas={clinicas}
+                value={addForm.clinica_id}
+                onChange={(id) => setAddForm((f) => ({ ...f, clinica_id: id }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Valores</Label>
+              {addForm.rows.map((row, idx) => (
+                <div
+                  key={idx}
+                  className="rounded-lg border border-gray-200 p-2.5 space-y-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <Input
+                      inputMode="decimal"
+                      placeholder="0,00"
+                      value={row.valor}
+                      onChange={(e) =>
+                        setAddForm((f) => ({
+                          ...f,
+                          rows: f.rows.map((r, i) =>
+                            i === idx ? { ...r, valor: e.target.value } : r
+                          ),
+                        }))
+                      }
+                    />
+                    {addForm.rows.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAddForm((f) => ({
+                            ...f,
+                            rows: f.rows.filter((_, i) => i !== idx),
+                          }))
+                        }
+                        className="shrink-0 p-1.5 text-gray-400 hover:text-red-600 transition-colors"
+                        title="Remover linha"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
+                  <PrazoChips
+                    value={row.meses}
+                    onChange={(m) =>
+                      setAddForm((f) => ({
+                        ...f,
+                        rows: f.rows.map((r, i) =>
+                          i === idx ? { ...r, meses: m } : r
+                        ),
+                      }))
+                    }
+                  />
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  setAddForm((f) => ({
+                    ...f,
+                    rows: [...f.rows, { valor: "", meses: 0 }],
+                  }))
+                }
+                className="w-full flex items-center justify-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition-colors py-2 rounded-lg border border-dashed border-gray-200"
+              >
+                <Plus size={14} /> Adicionar linha
+              </button>
+            </div>
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -473,7 +732,7 @@ export default function FaturamentoPage() {
                 size="sm"
                 className="flex-1"
                 onClick={handleAdd}
-                disabled={saving || !form.clinica_id}
+                disabled={saving || !addForm.clinica_id}
               >
                 {saving ? "Salvando…" : "Salvar"}
               </Button>
@@ -485,7 +744,11 @@ export default function FaturamentoPage() {
               const { start } = monthRange(month)
               const today = isoToday()
               const defaultDate = isoMonthOf(today) === month ? today : start
-              setForm({ date: defaultDate, clinica_id: "", valor: "" })
+              setAddForm({
+                date: defaultDate,
+                clinica_id: "",
+                rows: [{ valor: "", meses: 0 }],
+              })
               setAdding(true)
             }}
             disabled={activeClinicas.length === 0}
@@ -542,13 +805,84 @@ export default function FaturamentoPage() {
   )
 }
 
+function ClinicaChips({
+  clinicas,
+  value,
+  onChange,
+}: {
+  clinicas: DudaClinica[]
+  value: string
+  onChange: (id: string) => void
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {clinicas
+        .filter((c) => c.ativa || c.id === value)
+        .map((c) => {
+          const active = value === c.id
+          return (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => onChange(c.id)}
+              className={cn(
+                "text-xs font-semibold px-2.5 py-1 rounded-full border transition-all",
+                active ? "text-white shadow-sm" : "text-gray-700 bg-white",
+                !c.ativa && !active && "opacity-60"
+              )}
+              style={
+                active
+                  ? { backgroundColor: c.cor, borderColor: c.cor }
+                  : { borderColor: "#e5e7eb" }
+              }
+            >
+              {c.sigla || c.nome}
+              {!c.ativa && " (inativa)"}
+            </button>
+          )
+        })}
+    </div>
+  )
+}
+
+function PrazoChips({
+  value,
+  onChange,
+}: {
+  value: number
+  onChange: (m: number) => void
+}) {
+  return (
+    <div className="flex gap-1.5">
+      {PRAZO_OPTIONS.map((m) => {
+        const active = value === m
+        return (
+          <button
+            key={m}
+            type="button"
+            onClick={() => onChange(m)}
+            className={cn(
+              "text-xs px-2.5 py-1 rounded-full border transition-colors",
+              active
+                ? "bg-gray-900 text-white border-gray-900"
+                : "bg-white text-gray-600 border-gray-200 hover:text-gray-800"
+            )}
+          >
+            {PRAZO_LABELS[m]}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 function EntryForm({
   form,
   setForm,
   clinicas,
 }: {
-  form: FormData
-  setForm: (f: FormData | ((prev: FormData) => FormData)) => void
+  form: EditFormData
+  setForm: (f: EditFormData | ((prev: EditFormData) => EditFormData)) => void
   clinicas: DudaClinica[]
 }) {
   return (
@@ -563,33 +897,11 @@ function EntryForm({
       </div>
       <div className="space-y-1">
         <Label className="text-xs">Clínica</Label>
-        <div className="flex flex-wrap gap-1.5">
-          {clinicas
-            .filter((c) => c.ativa || c.id === form.clinica_id)
-            .map((c) => {
-              const active = form.clinica_id === c.id
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setForm((f) => ({ ...f, clinica_id: c.id }))}
-                  className={cn(
-                    "text-xs font-semibold px-2.5 py-1 rounded-full border transition-all",
-                    active ? "text-white shadow-sm" : "text-gray-700 bg-white",
-                    !c.ativa && !active && "opacity-60"
-                  )}
-                  style={
-                    active
-                      ? { backgroundColor: c.cor, borderColor: c.cor }
-                      : { borderColor: "#e5e7eb" }
-                  }
-                >
-                  {c.sigla || c.nome}
-                  {!c.ativa && " (inativa)"}
-                </button>
-              )
-            })}
-        </div>
+        <ClinicaChips
+          clinicas={clinicas}
+          value={form.clinica_id}
+          onChange={(id) => setForm((f) => ({ ...f, clinica_id: id }))}
+        />
       </div>
       <div className="space-y-1">
         <Label className="text-xs">Valor (R$)</Label>
@@ -598,6 +910,13 @@ function EntryForm({
           placeholder="0,00"
           value={form.valor}
           onChange={(e) => setForm((f) => ({ ...f, valor: e.target.value }))}
+        />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs">Recebimento</Label>
+        <PrazoChips
+          value={form.meses}
+          onChange={(m) => setForm((f) => ({ ...f, meses: m }))}
         />
       </div>
     </>

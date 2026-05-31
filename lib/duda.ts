@@ -3,14 +3,15 @@ import type { DudaAgendaSlot, DudaClinica, DudaEntry } from "@/lib/types"
 
 export interface ClinicaStats {
   clinica: DudaClinica
-  total: number          // realizado no mês
+  total: number          // realizado no mês (bruto, inclui M+2)
   count: number          // dias lançados
-  avg: number            // média/dia (geral, p/ display)
-  avgDiaria: number      // média dos dias de diária
-  avgProducao: number    // média dos dias de produção
+  avg: number            // média/dia geral (inclui M+2)
+  avgProj: number        // média/dia da renda planejável (exclui M+2)
+  avgDiaria: number      // média dos dias de diária (exclui M+2)
+  avgProducao: number    // média dos dias de produção (exclui M+2)
   agendaDays: number     // dias previstos no mês pela agenda
   remainingDays: number  // dias da agenda ainda não lançados
-  projetado: number      // projeção total para o fim do mês
+  projetado: number      // projeção de caixa planejável fim de mês (exclui M+2)
   hasAgenda: boolean     // se a clínica tem slots configurados na agenda
   projetavel: boolean    // se há dados suficientes pra estimar todos os dias remanescentes
 }
@@ -29,8 +30,20 @@ export function computeClinicaStats(
 ): ClinicaStats {
   const clinicaEntries = entries.filter((e) => e.clinica_id === clinica.id)
   const total = clinicaEntries.reduce((s, e) => s + Number(e.valor), 0)
-  const count = clinicaEntries.length
+  // Conta dias distintos — não entries. Quando um dia é quebrado em N
+  // linhas (Amil M+1 + MetLife M+2 etc.), continua sendo 1 dia trabalhado;
+  // contar entries inflaria o denominador da média.
+  const count = new Set(clinicaEntries.map((e) => e.date)).size
   const avg = count > 0 ? total / count : 0
+
+  // Projeção é "caixa planejável" — exclui entries que só caem em M+2 ou
+  // depois (planos esporádicos que distorcem o planejamento mensal).
+  // M+0 e M+1 continuam no cálculo: M+1 é a regra padrão da maioria das
+  // clínicas (recebimento previsível mês a mês).
+  const projEntries = clinicaEntries.filter((e) => e.meses_recebimento < 2)
+  const totalProj = projEntries.reduce((s, e) => s + Number(e.valor), 0)
+  const countProj = new Set(projEntries.map((e) => e.date)).size
+  const avgProj = countProj > 0 ? totalProj / countProj : 0
 
   const slots = agenda.filter((a) => a.clinica_id === clinica.id)
   const hasAgenda = slots.length > 0
@@ -39,21 +52,26 @@ export function computeClinicaStats(
   const slotByWeekday = new Map<number, DudaAgendaSlot>()
   slots.forEach((s) => slotByWeekday.set(s.weekday, s))
 
-  // Split entries by tipo (diaria/producao) based on the slot's weekday tipo.
-  // Entries on a weekday without a slot for this clinic are treated as "outro".
-  let diariaTotal = 0, diariaCount = 0
-  let producaoTotal = 0, producaoCount = 0
-  for (const e of clinicaEntries) {
+  // Médias por tipo usam só projEntries — pra projeção dos dias futuros
+  // ser estimada com base em renda planejável (sem viés de M+2).
+  // Conta dias distintos (Set por data) — quando um dia é quebrado em N
+  // entries, soma os valores mas conta como 1 dia.
+  let diariaTotal = 0, producaoTotal = 0
+  const diariaDates = new Set<string>()
+  const producaoDates = new Set<string>()
+  for (const e of projEntries) {
     const slot = slotByWeekday.get(getJsWeekday(e.date))
     const valor = Number(e.valor)
     if (slot?.tipo === 'diaria') {
       diariaTotal += valor
-      diariaCount++
+      diariaDates.add(e.date)
     } else if (slot?.tipo === 'producao') {
       producaoTotal += valor
-      producaoCount++
+      producaoDates.add(e.date)
     }
   }
+  const diariaCount = diariaDates.size
+  const producaoCount = producaoDates.size
   // Diária avg only when we have diária entries — no overall fallback,
   // because the contractual floor (minimo) is the right baseline when no data.
   const avgDiaria = diariaCount > 0 ? diariaTotal / diariaCount : 0
@@ -63,9 +81,9 @@ export function computeClinicaStats(
 
   if (!hasAgenda) {
     return {
-      clinica, total, count, avg, avgDiaria, avgProducao,
+      clinica, total, count, avg, avgProj, avgDiaria, avgProducao,
       agendaDays: 0, remainingDays: 0,
-      projetado: total,
+      projetado: totalProj,
       hasAgenda: false,
       projetavel: false,
     }
@@ -102,7 +120,7 @@ export function computeClinicaStats(
   )
   const remainingDays = remaining.length
 
-  let projetado = total
+  let projetado = totalProj
   let projetavel = true
   for (const r of remaining) {
     if (r.tipo === 'diaria') {
@@ -127,7 +145,7 @@ export function computeClinicaStats(
   }
 
   return {
-    clinica, total, count, avg, avgDiaria, avgProducao,
+    clinica, total, count, avg, avgProj, avgDiaria, avgProducao,
     agendaDays, remainingDays, projetado, hasAgenda: true, projetavel,
   }
 }

@@ -292,6 +292,13 @@ export default function GastosPage() {
               )}
             </div>
 
+            <button
+              onClick={() => setGastoSheet({ open: true, gasto: null })}
+              className="w-full flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors py-3 bg-white rounded-xl border border-dashed border-gray-200"
+            >
+              <Plus size={16} /> Novo gasto
+            </button>
+
             {/* Controles: view toggle + filtros */}
             <div className="flex items-center gap-2">
               <div className="flex-1 inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-xs">
@@ -484,13 +491,6 @@ export default function GastosPage() {
                 ))}
               </div>
             )}
-
-            <button
-              onClick={() => setGastoSheet({ open: true, gasto: null })}
-              className="w-full flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors py-3 bg-white rounded-xl border border-dashed border-gray-200"
-            >
-              <Plus size={16} /> Novo gasto
-            </button>
           </>
         )}
       </main>

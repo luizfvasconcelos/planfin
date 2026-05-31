@@ -37,6 +37,7 @@ export interface DudaEntry {
   date: string
   clinica_id: string
   valor: number
+  meses_recebimento: number
   updated_by: string | null
   created_at: string
   updated_at: string
