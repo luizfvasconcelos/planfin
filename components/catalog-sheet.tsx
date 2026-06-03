@@ -5,7 +5,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Trash2, Plus, X, GripVertical } from "lucide-react"
+import { Trash2, Plus, X, GripVertical, Pencil, ChevronRight, ChevronDown } from "lucide-react"
 import {
   DndContext,
   closestCenter,
@@ -89,12 +89,15 @@ interface SortableItemProps {
   subName?: string
   setSubName?: (s: string) => void
   onAddSub?: (parentId: string, nome: string) => Promise<void>
+  expanded?: boolean
+  onToggleExpand?: () => void
 }
 
 function SortableItem({
   item, editingId, editForm, setEditingId, setEditForm,
   confirmId, setConfirmId, onEdit, onDelete,
   nested, subs = [], addingSubId, setAddingSubId, subName = "", setSubName, onAddSub,
+  expanded, onToggleExpand,
 }: SortableItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const [saving, setSaving] = useState(false)
@@ -180,7 +183,7 @@ function SortableItem({
           </div>
         </div>
       ) : (
-        <div className="flex items-center gap-2 py-2">
+        <div className="flex items-center gap-1.5 py-2.5">
           <button
             {...attributes}
             {...listeners}
@@ -188,13 +191,34 @@ function SortableItem({
           >
             <GripVertical size={16} />
           </button>
-          <span
-            className="shrink-0 w-3 h-3 rounded-full"
-            style={{ backgroundColor: item.cor }}
-          />
-          <button className="flex-1 min-w-0 text-left" onClick={startEdit}>
-            <p className="text-sm text-gray-800 truncate font-medium">{item.nome}</p>
+          {/* Em modo nested, a linha inteira expande/recolhe as subs */}
+          <button
+            className="flex-1 flex items-center gap-2 min-w-0 text-left"
+            onClick={nested ? onToggleExpand : startEdit}
+          >
+            <span
+              className="shrink-0 w-3 h-3 rounded-full"
+              style={{ backgroundColor: item.cor }}
+            />
+            <span className="truncate text-sm text-gray-800 font-medium">{item.nome}</span>
+            {nested && subs.length > 0 && (
+              <span className="shrink-0 text-[10px] text-gray-400 tabular-nums">{subs.length}</span>
+            )}
+            {nested && (
+              expanded
+                ? <ChevronDown size={15} className="shrink-0 text-gray-300" />
+                : <ChevronRight size={15} className="shrink-0 text-gray-300" />
+            )}
           </button>
+          {nested && (
+            <button
+              onClick={startEdit}
+              className="shrink-0 p-1.5 rounded text-gray-300 hover:text-gray-600 transition-colors"
+              title="Editar categoria"
+            >
+              <Pencil size={14} />
+            </button>
+          )}
           <button
             onClick={() => {
               if (confirmId !== item.id) { setConfirmId(item.id); return }
@@ -202,7 +226,7 @@ function SortableItem({
               onDelete(item.id)
             }}
             className={cn(
-              "shrink-0 p-1 rounded transition-colors",
+              "shrink-0 p-1.5 rounded transition-colors",
               confirmId === item.id ? "text-red-500 bg-red-50" : "text-gray-300 hover:text-gray-500"
             )}
             title={confirmId === item.id ? "Toque de novo para confirmar" : "Remover"}
@@ -214,8 +238,8 @@ function SortableItem({
         </div>
       )}
 
-      {/* Subcategorias (modo nested) — acompanham a mãe no drag */}
-      {nested && !isEditing && (
+      {/* Subcategorias (modo nested) — visíveis só quando a mãe está expandida */}
+      {nested && !isEditing && expanded && (
         <div className="pl-9 pb-2 space-y-0.5">
           {subs.map((sub) =>
             editingId === sub.id ? (
@@ -332,6 +356,15 @@ export function CatalogSheet({
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [addingSubId, setAddingSubId] = useState<string | null>(null)
   const [subName, setSubName] = useState("")
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+
+  function toggleExpand(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
 
   // Raízes ordenadas como vêm do fetch; subs agrupadas por mãe.
   const roots = items.filter((c) => !c.parent_id)
@@ -489,6 +522,8 @@ export function CatalogSheet({
                     subName={subName}
                     setSubName={setSubName}
                     onAddSub={handleAddSub}
+                    expanded={expandedIds.has(item.id)}
+                    onToggleExpand={() => toggleExpand(item.id)}
                   />
                 ))}
               </div>

@@ -358,13 +358,13 @@ export default function GastosPage() {
               <Plus size={16} /> Novo gasto
             </button>
 
-            {/* Controles: view toggle + filtros */}
-            <div className="flex items-center gap-2">
-              <div className="flex-1 inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-xs">
+            {/* Controles: view toggle (linha cheia) + filtros (linha própria) */}
+            <div className="space-y-2">
+              <div className="inline-flex w-full rounded-lg border border-gray-200 bg-white p-0.5 text-sm">
                 <button
                   onClick={() => setViewMode("cronologica")}
                   className={cn(
-                    "flex-1 py-1.5 rounded-md transition-colors",
+                    "flex-1 py-2 rounded-md transition-colors",
                     viewMode === "cronologica" ? "bg-gray-900 text-white" : "text-gray-500"
                   )}
                 >
@@ -373,16 +373,16 @@ export default function GastosPage() {
                 <button
                   onClick={() => setViewMode("categoria")}
                   className={cn(
-                    "flex-1 py-1.5 rounded-md transition-colors",
+                    "flex-1 py-2 rounded-md transition-colors",
                     viewMode === "categoria" ? "bg-gray-900 text-white" : "text-gray-500"
                   )}
                 >
-                  Por categoria
+                  Categorias
                 </button>
                 <button
                   onClick={() => setViewMode("maiores")}
                   className={cn(
-                    "flex-1 py-1.5 rounded-md transition-colors",
+                    "flex-1 py-2 rounded-md transition-colors",
                     viewMode === "maiores" ? "bg-gray-900 text-white" : "text-gray-500"
                   )}
                 >
@@ -392,7 +392,7 @@ export default function GastosPage() {
               <button
                 onClick={() => setFiltersOpen((v) => !v)}
                 className={cn(
-                  "shrink-0 inline-flex items-center gap-1 text-xs px-3 py-2 rounded-lg border transition-colors",
+                  "w-full inline-flex items-center justify-center gap-1.5 text-sm py-2 rounded-lg border transition-colors",
                   filtrosAtivos > 0
                     ? "bg-blue-50 border-blue-200 text-blue-700"
                     : "bg-white border-gray-200 text-gray-500 hover:text-gray-800"
