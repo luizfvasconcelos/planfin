@@ -15,6 +15,7 @@ import { Trash2 } from "lucide-react"
 import { parseDecimal, isoToday } from "@/lib/utils"
 import { cn } from "@/lib/utils"
 import { RESPONSAVEL_LABELS } from "@/lib/users"
+import { rootsOf, subsByParent } from "@/lib/categorias"
 import type {
   CategoriaGasto,
   FormaPagamento,
@@ -51,11 +52,21 @@ export function GastoEditSheet({
   gasto, categorias, formasPagamento, defaultResponsavel,
   onClose, onSave, onDelete,
 }: Props) {
+  const roots = rootsOf(categorias)
+  const subsMap = subsByParent(categorias)
+
+  // O gasto guarda um único categoria_id (mãe ou filha). Na edição, abre
+  // separado: select com a mãe + chips com a sub (se houver).
+  const savedCategoria = gasto ? categorias.find((c) => c.id === gasto.categoria_id) : null
+  const initialRoot = savedCategoria?.parent_id ?? savedCategoria?.id ?? ""
+  const initialSub = savedCategoria?.parent_id ? savedCategoria.id : ""
+
   const [date, setDate] = useState<string>(gasto?.date ?? isoToday())
   const [valor, setValor] = useState<string>(
     gasto ? String(gasto.valor).replace(".", ",") : ""
   )
-  const [categoriaId, setCategoriaId] = useState<string>(gasto?.categoria_id ?? "")
+  const [categoriaId, setCategoriaId] = useState<string>(initialRoot)
+  const [subId, setSubId] = useState<string>(initialSub)
   const [formaPagamentoId, setFormaPagamentoId] = useState<string>(gasto?.forma_pagamento_id ?? "")
   const [responsavel, setResponsavel] = useState<ResponsavelGasto>(gasto?.responsavel ?? defaultResponsavel)
   const [descricao, setDescricao] = useState<string>(gasto?.descricao ?? "")
@@ -73,7 +84,7 @@ export function GastoEditSheet({
       id: gasto?.id ?? null,
       date,
       valor: valorNum,
-      categoria_id: categoriaId,
+      categoria_id: subId || categoriaId,
       forma_pagamento_id: formaPagamentoId,
       responsavel,
       descricao: descricao.trim() || null,
@@ -127,15 +138,50 @@ export function GastoEditSheet({
             <select
               id="categoria"
               value={categoriaId}
-              onChange={(e) => setCategoriaId(e.target.value)}
+              onChange={(e) => { setCategoriaId(e.target.value); setSubId("") }}
               className="w-full text-sm border border-gray-200 rounded-md px-3 py-2 bg-white"
             >
               <option value="">Selecione…</option>
-              {categorias.map((c) => (
+              {roots.map((c) => (
                 <option key={c.id} value={c.id}>{c.nome}</option>
               ))}
             </select>
           </div>
+
+          {(subsMap.get(categoriaId)?.length ?? 0) > 0 && (
+            <div className="space-y-1.5">
+              <Label>Subcategoria (opcional)</Label>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setSubId("")}
+                  className={cn(
+                    "text-xs px-2.5 py-1.5 rounded-full border transition-colors",
+                    subId === ""
+                      ? "bg-gray-900 text-white border-gray-900"
+                      : "bg-white text-gray-500 border-gray-200"
+                  )}
+                >
+                  Não classificado
+                </button>
+                {subsMap.get(categoriaId)!.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setSubId(s.id)}
+                    className={cn(
+                      "text-xs px-2.5 py-1.5 rounded-full border transition-colors",
+                      subId === s.id
+                        ? "bg-gray-900 text-white border-gray-900"
+                        : "bg-white text-gray-600 border-gray-200"
+                    )}
+                  >
+                    {s.nome}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="forma-pgto">Forma de pagamento</Label>

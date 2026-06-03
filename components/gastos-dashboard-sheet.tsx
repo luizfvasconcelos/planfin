@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { TrendingUp, TrendingDown, Sparkles } from "lucide-react"
+import { TrendingUp, TrendingDown, Sparkles, ChevronDown, ChevronRight } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { NAO_CLASSIFICADO, rootIdOf, rootsOf } from "@/lib/categorias"
 import {
   addMonths,
   cn,
@@ -81,6 +82,12 @@ export function GastosDashboardSheet({ open, onClose, categorias }: Props) {
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
   const [gastos, setGastos] = useState<RawGasto[]>([])
   const [loading, setLoading] = useState(true)
+  const [expandedCatId, setExpandedCatId] = useState<string | null>(null)
+
+  // Tudo aqui agrega por categoria-RAIZ; subcategorias só aparecem na
+  // composição do mês foco (linha expansível).
+  const catMap = useMemo(() => new Map(categorias.map((c) => [c.id, c])), [categorias])
+  const rootCategorias = useMemo(() => rootsOf(categorias), [categorias])
 
   function toggleHidden(id: string) {
     setHiddenIds((prev) => {
@@ -139,7 +146,8 @@ export function GastosDashboardSheet({ open, onClose, categorias }: Props) {
     fetchGastos()
   }, [open, fetchGastos])
 
-  // totais[mês].get(categoria_id) = soma. Inclui o fetchStart (mês extra) pra cálculo de variação.
+  // totais[mês].get(categoria_raiz_id) = soma (subs rolam pra mãe).
+  // Inclui o fetchStart (mês extra) pra cálculo de variação.
   const totals = useMemo(() => {
     const m = new Map<string, Map<string, number>>()
     const allMonths = months.length > 0 ? [fetchStart, ...months] : []
@@ -148,10 +156,11 @@ export function GastosDashboardSheet({ open, onClose, categorias }: Props) {
       const mk = isoMonthOf(g.date)
       const inner = m.get(mk)
       if (!inner) continue
-      inner.set(g.categoria_id, (inner.get(g.categoria_id) ?? 0) + Number(g.valor))
+      const rootId = rootIdOf(g.categoria_id, catMap)
+      inner.set(rootId, (inner.get(rootId) ?? 0) + Number(g.valor))
     }
     return m
-  }, [months, fetchStart, gastos])
+  }, [months, fetchStart, gastos, catMap])
 
   // Total por mês (soma de todas as categorias).
   const totalsByMonth = useMemo(() => {
@@ -162,12 +171,12 @@ export function GastosDashboardSheet({ open, onClose, categorias }: Props) {
     })
   }, [months, totals])
 
-  // Categorias que aparecem na janela (pra chips e tabela).
+  // Categorias-raiz que aparecem na janela (pra chips e tabela).
   const candidateCategorias = useMemo(() => {
-    return categorias.filter((c) =>
+    return rootCategorias.filter((c) =>
       months.some((m) => (totals.get(m)?.get(c.id) ?? 0) > 0)
     )
-  }, [categorias, months, totals])
+  }, [rootCategorias, months, totals])
 
   const visibleCategorias = useMemo(
     () => candidateCategorias.filter((c) => !hiddenIds.has(c.id)),
@@ -218,13 +227,29 @@ export function GastosDashboardSheet({ open, onClose, categorias }: Props) {
     let total = 0
     inner.forEach((v) => { total += v })
     if (total === 0) return { total: 0, items: [] }
-    const items = categorias
+    const items = rootCategorias
       .map((c) => ({ categoria: c, valor: inner.get(c.id) ?? 0 }))
       .filter((it) => it.valor > 0)
       .map((it) => ({ ...it, pct: (it.valor / total) * 100 }))
       .sort((a, b) => b.valor - a.valor)
     return { total, items }
-  }, [focusMonth, totals, categorias])
+  }, [focusMonth, totals, rootCategorias])
+
+  // Quebra por subcategoria do mês foco: subBreakdown.get(raiz).get(subId|"")
+  // ("" = lançado direto na mãe → "Não classificado").
+  const subBreakdown = useMemo(() => {
+    const m = new Map<string, Map<string, number>>()
+    if (!focusMonth) return m
+    for (const g of gastos) {
+      if (isoMonthOf(g.date) !== focusMonth) continue
+      const rootId = rootIdOf(g.categoria_id, catMap)
+      const subKey = catMap.get(g.categoria_id)?.parent_id ? g.categoria_id : ""
+      if (!m.has(rootId)) m.set(rootId, new Map())
+      const inner = m.get(rootId)!
+      inner.set(subKey, (inner.get(subKey) ?? 0) + Number(g.valor))
+    }
+    return m
+  }, [gastos, focusMonth, catMap])
 
   // Variações foco vs prevMonth: top 5 maiores diferenças em valor absoluto.
   // Inclui categorias que apareceram (was 0) e zeraram (now 0).
@@ -235,7 +260,7 @@ export function GastosDashboardSheet({ open, onClose, categorias }: Props) {
     const cur = totals.get(focusMonth)
     const prev = totals.get(prevMonth)
     if (!cur || !prev) return []
-    return categorias
+    return rootCategorias
       .map((c) => {
         const current = cur.get(c.id) ?? 0
         const previous = prev.get(c.id) ?? 0
@@ -247,7 +272,7 @@ export function GastosDashboardSheet({ open, onClose, categorias }: Props) {
       .filter((it) => it.diff !== 0)
       .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))
       .slice(0, 5)
-  }, [focusMonth, prevMonth, hasPrevious, totals, categorias])
+  }, [focusMonth, prevMonth, hasPrevious, totals, rootCategorias])
 
   // Posição Y dos rótulos no modo "por categoria" com collision avoidance:
   // pra cada coluna (mês), empilha os labels de baixo pra cima respeitando MIN_GAP.
@@ -425,34 +450,71 @@ export function GastosDashboardSheet({ open, onClose, categorias }: Props) {
                     </p>
                   </div>
 
-                  {/* C — Composição: barras horizontais ordenadas, com valor absoluto e % */}
+                  {/* C — Composição: barras horizontais ordenadas, com valor absoluto e %.
+                      Categoria com subcategorias expande no toque (quebra por sub). */}
                   <div className="space-y-2">
-                    {composition.items.map(({ categoria, valor, pct }) => (
-                      <div key={categoria.id} className="space-y-1">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="inline-flex items-center gap-1.5 font-medium text-gray-700">
-                            <span
-                              className="w-2 h-2 rounded-full shrink-0"
-                              style={{ backgroundColor: categoria.cor }}
-                            />
-                            {categoria.nome}
-                          </span>
-                          <span className="tabular-nums text-gray-600">
-                            <span className="font-semibold text-gray-800">{formatBRL(valor)}</span>
-                            <span className="text-gray-400 ml-1.5">{pct.toFixed(1)}%</span>
-                          </span>
+                    {composition.items.map(({ categoria, valor, pct }) => {
+                      const breakdown = subBreakdown.get(categoria.id)
+                      const temSubs = breakdown
+                        ? Array.from(breakdown.keys()).some((k) => k !== "")
+                        : false
+                      const expanded = expandedCatId === categoria.id
+                      return (
+                        <div key={categoria.id} className="space-y-1">
+                          <button
+                            className={cn("w-full space-y-1", !temSubs && "cursor-default")}
+                            onClick={() => temSubs && setExpandedCatId(expanded ? null : categoria.id)}
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="inline-flex items-center gap-1.5 font-medium text-gray-700">
+                                <span
+                                  className="w-2 h-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: categoria.cor }}
+                                />
+                                {categoria.nome}
+                                {temSubs && (
+                                  expanded
+                                    ? <ChevronDown size={12} className="text-gray-400" />
+                                    : <ChevronRight size={12} className="text-gray-400" />
+                                )}
+                              </span>
+                              <span className="tabular-nums text-gray-600">
+                                <span className="font-semibold text-gray-800">{formatBRL(valor)}</span>
+                                <span className="text-gray-400 ml-1.5">{pct.toFixed(1)}%</span>
+                              </span>
+                            </div>
+                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full"
+                                style={{
+                                  width: `${pct}%`,
+                                  backgroundColor: categoria.cor,
+                                }}
+                              />
+                            </div>
+                          </button>
+                          {expanded && breakdown && (
+                            <div className="pl-3.5 pt-0.5 space-y-1">
+                              {Array.from(breakdown.entries())
+                                .sort((a, b) => b[1] - a[1])
+                                .map(([subKey, v]) => (
+                                  <div key={subKey || "nc"} className="flex items-center justify-between text-xs">
+                                    <span className={subKey === "" ? "text-gray-400 italic" : "text-gray-600"}>
+                                      {subKey === "" ? NAO_CLASSIFICADO : catMap.get(subKey)?.nome ?? "?"}
+                                    </span>
+                                    <span className="tabular-nums text-gray-600">
+                                      {formatBRL(v)}
+                                      <span className="text-gray-400 ml-1.5">
+                                        {valor > 0 ? `${Math.round((v / valor) * 100)}%` : ""}
+                                      </span>
+                                    </span>
+                                  </div>
+                                ))}
+                            </div>
+                          )}
                         </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${pct}%`,
-                              backgroundColor: categoria.cor,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
 
                   {/* B — Variações vs mês anterior */}

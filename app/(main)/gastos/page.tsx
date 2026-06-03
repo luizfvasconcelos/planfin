@@ -20,6 +20,15 @@ import {
 } from "@/lib/utils"
 import { cn } from "@/lib/utils"
 import { emailToResponsavel, RESPONSAVEL_LABELS } from "@/lib/users"
+import {
+  corOf,
+  displayCategoria,
+  NAO_CLASSIFICADO,
+  rootIdOf,
+  rootOf,
+  rootsOf,
+  subsByParent,
+} from "@/lib/categorias"
 import type {
   CategoriaGasto,
   FormaPagamento,
@@ -30,7 +39,7 @@ import type {
 const MIN_MONTH = "2026-05"
 const LS_KEY_MES = "planfin.gastos.mes"
 
-type ViewMode = "cronologica" | "categoria"
+type ViewMode = "cronologica" | "categoria" | "maiores"
 const RESPONSAVEIS: ResponsavelGasto[] = ["luiz", "duda", "casal"]
 
 export default function GastosPage() {
@@ -80,7 +89,12 @@ export default function GastosPage() {
   const [dashboardOpen, setDashboardOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>("cronologica")
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [filterCategoriaIds, setFilterCategoriaIds] = useState<Set<string>>(new Set())
+  // Filtro de categoria em 2 níveis: mães selecionadas + refino por sub.
+  // filterSubIds guarda categoria_ids específicos (sub, ou a própria mãe = "Não
+  // classificado"). Uma mãe selecionada sem refino pega tudo dela; com refino,
+  // só os ids escolhidos.
+  const [filterRootIds, setFilterRootIds] = useState<Set<string>>(new Set())
+  const [filterSubIds, setFilterSubIds] = useState<Set<string>>(new Set())
   const [filterResponsaveis, setFilterResponsaveis] = useState<Set<ResponsavelGasto>>(new Set())
   const [filterFormaIds, setFilterFormaIds] = useState<Set<string>>(new Set())
 
@@ -122,15 +136,24 @@ export default function GastosPage() {
   // --- Derivações ---------------------------------------------------------
   const categoriasMap = useMemo(() => new Map(categorias.map((c) => [c.id, c])), [categorias])
   const formasMap = useMemo(() => new Map(formasPagamento.map((f) => [f.id, f])), [formasPagamento])
+  const categoriasRaiz = useMemo(() => rootsOf(categorias), [categorias])
+  const subsMap = useMemo(() => subsByParent(categorias), [categorias])
 
   const gastosFiltered = useMemo(() => {
     return gastos.filter((g) => {
-      if (filterCategoriaIds.size > 0 && !filterCategoriaIds.has(g.categoria_id)) return false
+      if (filterRootIds.size > 0) {
+        const root = rootIdOf(g.categoria_id, categoriasMap)
+        if (!filterRootIds.has(root)) return false
+        // Refino: se essa mãe tem subs marcadas, o gasto precisa bater uma delas.
+        const refinos = (subsMap.get(root) ?? []).map((s) => s.id).concat(root) // +mãe = "não classificado"
+        const ativos = refinos.filter((id) => filterSubIds.has(id))
+        if (ativos.length > 0 && !ativos.includes(g.categoria_id)) return false
+      }
       if (filterResponsaveis.size > 0 && !filterResponsaveis.has(g.responsavel)) return false
       if (filterFormaIds.size > 0 && !filterFormaIds.has(g.forma_pagamento_id)) return false
       return true
     })
-  }, [gastos, filterCategoriaIds, filterResponsaveis, filterFormaIds])
+  }, [gastos, filterRootIds, filterSubIds, filterResponsaveis, filterFormaIds, categoriasMap, subsMap])
 
   const totalFiltrado = useMemo(
     () => gastosFiltered.reduce((s, g) => s + Number(g.valor), 0),
@@ -142,21 +165,39 @@ export default function GastosPage() {
   )
 
   const filtrosAtivos =
-    filterCategoriaIds.size + filterResponsaveis.size + filterFormaIds.size
+    filterRootIds.size + filterResponsaveis.size + filterFormaIds.size
 
+  // Agrupamento por categoria-raiz; porSub guarda subtotal por subcategoria
+  // (chave "" = gasto lançado direto na mãe → "Não classificado").
   const gastosPorCategoria = useMemo(() => {
-    const grouped = new Map<string, { categoria: CategoriaGasto | null; gastos: GastoVariavel[]; total: number }>()
+    const grouped = new Map<string, {
+      categoria: CategoriaGasto | null
+      gastos: GastoVariavel[]
+      total: number
+      porSub: Map<string, number>
+    }>()
     for (const g of gastosFiltered) {
-      const key = g.categoria_id
+      const root = rootOf(g.categoria_id, categoriasMap)
+      const key = root?.id ?? g.categoria_id
       if (!grouped.has(key)) {
-        grouped.set(key, { categoria: categoriasMap.get(g.categoria_id) ?? null, gastos: [], total: 0 })
+        grouped.set(key, { categoria: root, gastos: [], total: 0, porSub: new Map() })
       }
       const entry = grouped.get(key)!
       entry.gastos.push(g)
       entry.total += Number(g.valor)
+      const subKey = categoriasMap.get(g.categoria_id)?.parent_id ? g.categoria_id : ""
+      entry.porSub.set(subKey, (entry.porSub.get(subKey) ?? 0) + Number(g.valor))
     }
     return Array.from(grouped.values()).sort((a, b) => b.total - a.total)
   }, [gastosFiltered, categoriasMap])
+
+  // Visualização "Maiores": valor decrescente (empate: mais recente primeiro).
+  const gastosMaiores = useMemo(
+    () => gastosFiltered.slice().sort(
+      (a, b) => Number(b.valor) - Number(a.valor) || b.date.localeCompare(a.date)
+    ),
+    [gastosFiltered]
+  )
 
   const defaultResponsavel = emailToResponsavel(userEmail)
 
@@ -206,11 +247,29 @@ export default function GastosPage() {
     return next
   }
 
+  // Toggle de mãe: ao desmarcar, limpa também os refinos de subs daquela mãe.
+  function toggleRoot(rootId: string) {
+    setFilterRootIds((s) => {
+      const next = toggleSet(s, rootId)
+      if (!next.has(rootId)) {
+        const subIds = new Set((subsMap.get(rootId) ?? []).map((x) => x.id).concat(rootId))
+        setFilterSubIds((sub) => new Set([...sub].filter((id) => !subIds.has(id))))
+      }
+      return next
+    })
+  }
+
   function clearFilters() {
-    setFilterCategoriaIds(new Set())
+    setFilterRootIds(new Set())
+    setFilterSubIds(new Set())
     setFilterResponsaveis(new Set())
     setFilterFormaIds(new Set())
   }
+
+  // Mães selecionadas que têm subs — alimentam a linha de refino.
+  const refinaveis = categoriasRaiz.filter(
+    (c) => filterRootIds.has(c.id) && (subsMap.get(c.id)?.length ?? 0) > 0
+  )
 
   // --- Render --------------------------------------------------------------
   return (
@@ -320,6 +379,15 @@ export default function GastosPage() {
                 >
                   Por categoria
                 </button>
+                <button
+                  onClick={() => setViewMode("maiores")}
+                  className={cn(
+                    "flex-1 py-1.5 rounded-md transition-colors",
+                    viewMode === "maiores" ? "bg-gray-900 text-white" : "text-gray-500"
+                  )}
+                >
+                  Maiores
+                </button>
               </div>
               <button
                 onClick={() => setFiltersOpen((v) => !v)}
@@ -345,12 +413,13 @@ export default function GastosPage() {
                 <div className="space-y-1.5">
                   <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Categoria</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {categorias.map((c) => {
-                      const active = filterCategoriaIds.has(c.id)
+                    {categoriasRaiz.map((c) => {
+                      const active = filterRootIds.has(c.id)
+                      const nSubs = subsMap.get(c.id)?.length ?? 0
                       return (
                         <button
                           key={c.id}
-                          onClick={() => setFilterCategoriaIds((s) => toggleSet(s, c.id))}
+                          onClick={() => toggleRoot(c.id)}
                           className={cn(
                             "inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border transition-colors",
                             active
@@ -363,6 +432,14 @@ export default function GastosPage() {
                             style={{ backgroundColor: c.cor }}
                           />
                           {c.nome}
+                          {nSubs > 0 && (
+                            <span className={cn(
+                              "text-[9px] tabular-nums",
+                              active ? "text-gray-300" : "text-gray-400"
+                            )}>
+                              {nSubs}
+                            </span>
+                          )}
                         </button>
                       )
                     })}
@@ -370,6 +447,47 @@ export default function GastosPage() {
                       <p className="text-xs text-gray-300">Nenhuma categoria.</p>
                     )}
                   </div>
+
+                  {/* Refino por subcategoria — só das mães selecionadas que têm subs */}
+                  {refinaveis.map((mae) => {
+                    const subs = subsMap.get(mae.id) ?? []
+                    return (
+                      <div key={mae.id} className="pl-2 border-l-2 space-y-1.5" style={{ borderColor: `${mae.cor}55` }}>
+                        <p className="text-[10px] text-gray-400">
+                          refinar <span className="font-medium text-gray-500">{mae.nome}</span>
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {subs.map((s) => {
+                            const on = filterSubIds.has(s.id)
+                            return (
+                              <button
+                                key={s.id}
+                                onClick={() => setFilterSubIds((set) => toggleSet(set, s.id))}
+                                className={cn(
+                                  "text-xs px-2 py-0.5 rounded-full border transition-colors",
+                                  on ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-500 border-gray-200"
+                                )}
+                              >
+                                {s.nome}
+                              </button>
+                            )
+                          })}
+                          {/* "Não classificado" = gasto lançado direto na mãe */}
+                          <button
+                            onClick={() => setFilterSubIds((set) => toggleSet(set, mae.id))}
+                            className={cn(
+                              "text-xs px-2 py-0.5 rounded-full border transition-colors italic",
+                              filterSubIds.has(mae.id)
+                                ? "bg-gray-900 text-white border-gray-900"
+                                : "bg-white text-gray-400 border-gray-200"
+                            )}
+                          >
+                            sem sub
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
 
                 <div className="space-y-1.5">
@@ -451,44 +569,84 @@ export default function GastosPage() {
                   <GastoCard
                     key={g.id}
                     gasto={g}
-                    categoria={categoriasMap.get(g.categoria_id) ?? null}
+                    categoria={displayCategoria(g.categoria_id, categoriasMap)}
                     forma={formasMap.get(g.forma_pagamento_id) ?? null}
+                    onClick={() => setGastoSheet({ open: true, gasto: g })}
+                  />
+                ))}
+              </div>
+            ) : viewMode === "maiores" ? (
+              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                {gastosMaiores.map((g) => (
+                  <GastoCard
+                    key={g.id}
+                    gasto={g}
+                    categoria={displayCategoria(g.categoria_id, categoriasMap)}
+                    forma={formasMap.get(g.forma_pagamento_id) ?? null}
+                    share={totalFiltrado > 0 ? Number(g.valor) / totalFiltrado : 0}
                     onClick={() => setGastoSheet({ open: true, gasto: g })}
                   />
                 ))}
               </div>
             ) : (
               <div className="space-y-3">
-                {gastosPorCategoria.map(({ categoria, gastos: gs, total }) => (
-                  <div key={categoria?.id ?? "sem"} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                    <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-100">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: categoria?.cor ?? "#9ca3af" }}
-                        />
-                        <p className="text-sm font-medium text-gray-800">
-                          {categoria?.nome ?? "Sem categoria"}
+                {gastosPorCategoria.map(({ categoria, gastos: gs, total, porSub }) => {
+                  const temSubs = Array.from(porSub.keys()).some((k) => k !== "")
+                  return (
+                    <div key={categoria?.id ?? "sem"} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-100">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: categoria?.cor ?? "#9ca3af" }}
+                          />
+                          <p className="text-sm font-medium text-gray-800">
+                            {categoria?.nome ?? "Sem categoria"}
+                          </p>
+                          <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                            {gs.length}
+                          </span>
+                        </div>
+                        <p className="text-sm font-semibold text-gray-900 tabular-nums">
+                          {formatBRL(total)}
                         </p>
-                        <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                          {gs.length}
-                        </span>
                       </div>
-                      <p className="text-sm font-semibold text-gray-900 tabular-nums">
-                        {formatBRL(total)}
-                      </p>
+                      {/* Subtotal por subcategoria — só quando há gasto classificado */}
+                      {temSubs && (
+                        <div className="px-4 py-2 bg-gray-50/50 border-b border-gray-100 space-y-1">
+                          {Array.from(porSub.entries())
+                            .sort((a, b) => b[1] - a[1])
+                            .map(([subKey, valor]) => (
+                              <div key={subKey || "nc"} className="flex items-center justify-between text-xs">
+                                <span className={subKey === "" ? "text-gray-400 italic" : "text-gray-600"}>
+                                  {subKey === "" ? NAO_CLASSIFICADO : categoriasMap.get(subKey)?.nome ?? "?"}
+                                </span>
+                                <span className="tabular-nums text-gray-700">
+                                  {formatBRL(valor)}
+                                  <span className="text-gray-400 ml-1.5">
+                                    {total > 0 ? `${Math.round((valor / total) * 100)}%` : ""}
+                                  </span>
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                      {gs.map((g) => {
+                        const cat = categoriasMap.get(g.categoria_id)
+                        return (
+                          <GastoCard
+                            key={g.id}
+                            gasto={g}
+                            // Mãe já indicada na seção; mostra só a sub (se houver)
+                            categoria={cat?.parent_id ? { ...cat, cor: corOf(cat, categoriasMap) } : null}
+                            forma={formasMap.get(g.forma_pagamento_id) ?? null}
+                            onClick={() => setGastoSheet({ open: true, gasto: g })}
+                          />
+                        )
+                      })}
                     </div>
-                    {gs.map((g) => (
-                      <GastoCard
-                        key={g.id}
-                        gasto={g}
-                        categoria={null}  // já indicado na seção
-                        forma={formasMap.get(g.forma_pagamento_id) ?? null}
-                        onClick={() => setGastoSheet({ open: true, gasto: g })}
-                      />
-                    ))}
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </>
@@ -515,6 +673,7 @@ export default function GastosPage() {
         title="Categorias"
         itemLabelSingular="categoria"
         placeholder="ex: Alimentação, Deslocamento"
+        nested
         onChange={fetchAll}
       />
 
@@ -543,10 +702,11 @@ interface GastoCardProps {
   gasto: GastoVariavel
   categoria: CategoriaGasto | null
   forma: FormaPagamento | null
+  share?: number  // fração do total exibido (0..1) — mostrado na view "Maiores"
   onClick: () => void
 }
 
-function GastoCard({ gasto, categoria, forma, onClick }: GastoCardProps) {
+function GastoCard({ gasto, categoria, forma, share, onClick }: GastoCardProps) {
   return (
     <button
       onClick={onClick}
@@ -585,9 +745,16 @@ function GastoCard({ gasto, categoria, forma, onClick }: GastoCardProps) {
           <p className="text-sm text-gray-600 truncate mt-0.5">{gasto.descricao}</p>
         )}
       </div>
-      <p className="shrink-0 text-sm font-semibold text-gray-900 tabular-nums">
-        {formatBRL(Number(gasto.valor))}
-      </p>
+      <div className="shrink-0 text-right">
+        <p className="text-sm font-semibold text-gray-900 tabular-nums">
+          {formatBRL(Number(gasto.valor))}
+        </p>
+        {share !== undefined && (
+          <p className="text-[10px] text-gray-400 tabular-nums">
+            {(share * 100).toFixed(share >= 0.095 ? 0 : 1)}% do total
+          </p>
+        )}
+      </div>
     </button>
   )
 }

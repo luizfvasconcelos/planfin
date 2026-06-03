@@ -11,8 +11,8 @@ export interface OrcamentoStats {
   pctConsumido: number      // 0..1 (pode passar de 1)
   // Tempo
   diasTotal: number
-  diasDecorridos: number    // limitado entre 0 e diasTotal
-  diasRestantes: number     // limitado entre 0 e diasTotal
+  diasDecorridos: number    // do início até hoje, inclusive (limitado entre 0 e diasTotal)
+  diasRestantes: number     // de hoje até o fim, INCLUINDO hoje quando ativo (hoje conta nos dois)
   // Ritmo
   mediaDiariaAtual: number     // gasto / diasDecorridos (0 se diasDecorridos = 0)
   mediaDiariaRecomendada: number  // restante / diasRestantes (0 se sem dias restantes; negativo se estourou)
@@ -59,7 +59,13 @@ export function computeStats(
   else if (status === "passado") diasDecorridos = diasTotal
   else diasDecorridos = diasNoPeriodo({ data_inicio: o.data_inicio, data_fim: today })
 
-  const diasRestantes = Math.max(0, diasTotal - diasDecorridos)
+  // Quando ativo, hoje ainda não acabou: conta como decorrido (pra média)
+  // E como restante (pra "pode gastar"). Senão, no último dia do período o
+  // app diria que não dá mais pra gastar nada — e na véspera sugeriria
+  // gastar todo o restante de uma vez.
+  const diasRestantes = status === "ativo"
+    ? diasTotal - diasDecorridos + 1
+    : Math.max(0, diasTotal - diasDecorridos)
 
   const mediaDiariaAtual = diasDecorridos > 0 ? gasto / diasDecorridos : 0
   const mediaDiariaRecomendada = diasRestantes > 0 ? restante / diasRestantes : 0

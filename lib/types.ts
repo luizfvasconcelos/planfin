@@ -102,6 +102,7 @@ export interface CategoriaGasto {
   icone: string | null
   position: number
   ativa: boolean
+  parent_id: string | null  // preenchido = subcategoria (1 nível, cor herdada da mãe)
   created_at: string
   updated_at: string
 }

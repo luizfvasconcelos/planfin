@@ -23,6 +23,7 @@ import {
   suggestNext,
 } from "@/lib/orcamento"
 import { RESPONSAVEL_LABELS } from "@/lib/users"
+import { displayCategoria } from "@/lib/categorias"
 import type {
   CategoriaGasto,
   FormaPagamento,
@@ -287,7 +288,7 @@ export default function OrcamentoPage() {
                     <GastoOrcamentoRow
                       key={g.id}
                       gasto={g}
-                      categoria={categoriasMap.get(g.categoria_id) ?? null}
+                      categoria={displayCategoria(g.categoria_id, categoriasMap)}
                       forma={formasMap.get(g.forma_pagamento_id) ?? null}
                       countsForBudget={isGastoInOrcamento(g, selected)}
                       onToggle={() => toggleExcluirGasto(g)}
@@ -423,7 +424,9 @@ function SummaryCard({ orcamento, stats }: SummaryCardProps) {
             {stats.diasDecorridos}/{stats.diasTotal}
           </p>
           {stats.status === "ativo" && (
-            <p className="text-[10px] text-gray-400">{stats.diasRestantes} restantes</p>
+            <p className="text-[10px] text-gray-400">
+              {stats.diasRestantes === 1 ? "último dia" : `${stats.diasRestantes} restantes (com hoje)`}
+            </p>
           )}
         </div>
         {stats.status === "ativo" && stats.diasRestantes > 0 ? (
@@ -435,7 +438,9 @@ function SummaryCard({ orcamento, stats }: SummaryCardProps) {
             )}>
               {formatBRL(Math.max(0, stats.mediaDiariaRecomendada))}
             </p>
-            <p className="text-[10px] text-gray-400">por dia até o fim</p>
+            <p className="text-[10px] text-gray-400">
+              {stats.diasRestantes === 1 ? "hoje, até fechar" : "por dia até o fim"}
+            </p>
           </div>
         ) : (
           <div>
