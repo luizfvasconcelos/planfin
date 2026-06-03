@@ -710,50 +710,54 @@ function GastoCard({ gasto, categoria, forma, share, onClick }: GastoCardProps) 
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors text-left"
+      className="w-full flex items-center gap-3 px-4 py-2 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors text-left"
     >
-      <div className="shrink-0 w-10 text-center">
-        <p className="text-[10px] text-gray-400 uppercase">{getDayOfWeek(gasto.date)}</p>
+      <div className="shrink-0 w-9 text-center">
+        <p className="text-[10px] text-gray-400 uppercase leading-none">{getDayOfWeek(gasto.date)}</p>
         <p className="text-base font-semibold text-gray-800 tabular-nums leading-tight">
           {formatDateShort(gasto.date).split("/")[0]}
         </p>
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 space-y-1">
+        {/* Linha 1: descrição + valor (valor sobe pra liberar a linha de chips) */}
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="text-sm text-gray-700 truncate min-w-0">
+            {gasto.descricao || (categoria?.nome ?? "—")}
+          </p>
+          <div className="shrink-0 text-right leading-none">
+            <span className="text-sm font-semibold text-gray-900 tabular-nums">
+              {formatBRL(Number(gasto.valor))}
+            </span>
+            {share !== undefined && (
+              <span className="ml-1.5 text-[10px] text-gray-400 tabular-nums">
+                {(share * 100).toFixed(share >= 0.095 ? 0 : 1)}%
+              </span>
+            )}
+          </div>
+        </div>
+        {/* Linha 2: chips com a largura inteira */}
         <div className="flex items-center gap-1.5 flex-wrap">
           {categoria && (
             <span
-              className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded"
+              className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded max-w-full"
               style={{ backgroundColor: `${categoria.cor}22`, color: categoria.cor }}
             >
-              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: categoria.cor }} />
-              {categoria.nome}
+              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: categoria.cor }} />
+              <span className="truncate">{categoria.nome}</span>
             </span>
           )}
           {forma && (
             <span
-              className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded"
+              className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0"
               style={{ backgroundColor: `${forma.cor}22`, color: forma.cor }}
             >
               {forma.nome}
             </span>
           )}
-          <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+          <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">
             {RESPONSAVEL_LABELS[gasto.responsavel]}
           </span>
         </div>
-        {gasto.descricao && (
-          <p className="text-sm text-gray-600 truncate mt-0.5">{gasto.descricao}</p>
-        )}
-      </div>
-      <div className="shrink-0 text-right">
-        <p className="text-sm font-semibold text-gray-900 tabular-nums">
-          {formatBRL(Number(gasto.valor))}
-        </p>
-        {share !== undefined && (
-          <p className="text-[10px] text-gray-400 tabular-nums">
-            {(share * 100).toFixed(share >= 0.095 ? 0 : 1)}% do total
-          </p>
-        )}
       </div>
     </button>
   )
