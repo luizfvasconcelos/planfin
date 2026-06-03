@@ -737,15 +737,25 @@ function GastoCard({ gasto, categoria, forma, share, onClick }: GastoCardProps) 
         </div>
         {/* Linha 2: chips com a largura inteira */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          {categoria && (
-            <span
-              className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded max-w-full"
-              style={{ backgroundColor: `${categoria.cor}22`, color: categoria.cor }}
-            >
-              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: categoria.cor }} />
-              <span className="truncate">{categoria.nome}</span>
-            </span>
-          )}
+          {categoria && (() => {
+            // Sub vem como "Mãe › Filha": mãe saturada (âncora de cor), filha
+            // apagada pra separar categoria de subcategoria num bate-olho.
+            const [mae, sub] = categoria.nome.split(" › ")
+            return (
+              <span
+                className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded max-w-full"
+                style={{ backgroundColor: `${categoria.cor}1a`, color: categoria.cor }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: categoria.cor }} />
+                <span className="truncate">
+                  {mae}
+                  {sub && (
+                    <span className="font-normal opacity-55"> › {sub}</span>
+                  )}
+                </span>
+              </span>
+            )
+          })()}
           {forma && (
             <span
               className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0"
