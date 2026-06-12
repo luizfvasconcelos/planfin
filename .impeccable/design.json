@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-03T00:00:00.000Z",
+  "title": "Design System: PlanFin",
+  "extensions": {
+    "colorMeta": {
+      "ink": { "role": "primary", "displayName": "Tinta", "canonical": "#111827", "tonalRamp": ["#030712", "#111827", "#1f2937", "#374151", "#4b5563", "#6b7280", "#9ca3af", "#d1d5db", "#f3f4f6"] },
+      "paper": { "role": "neutral", "displayName": "Papel", "canonical": "#f9fafb", "tonalRamp": ["#111827", "#374151", "#6b7280", "#9ca3af", "#d1d5db", "#e5e7eb", "#f3f4f6", "#f9fafb", "#ffffff"] },
+      "info": { "role": "secondary", "displayName": "Azul Navegação", "canonical": "#2563eb", "tonalRamp": ["#172554", "#1e3a8a", "#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd", "#bfdbfe", "#eff6ff"] },
+      "positive": { "role": "semantic", "displayName": "Entra (Verde)", "canonical": "#059669", "tonalRamp": ["#022c22", "#064e3b", "#047857", "#059669", "#10b981", "#34d399", "#6ee7b7", "#a7f3d0", "#ecfdf5"] },
+      "negative": { "role": "semantic", "displayName": "Sai (Vermelho)", "canonical": "#dc2626", "tonalRamp": ["#450a0a", "#7f1d1d", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5", "#fecaca", "#fef2f2"] },
+      "warning": { "role": "semantic", "displayName": "Atenção (Âmbar)", "canonical": "#d97706", "tonalRamp": ["#451a03", "#78350f", "#b45309", "#d97706", "#f59e0b", "#fbbf24", "#fcd34d", "#fde68a", "#fffbeb"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Só o letreiro 'PlanFin' da tela inicial. Não aparece dentro do app." },
+      "headline": { "displayName": "Headline", "purpose": "Valores-totais e KPIs — o maior número de cada tela, em tabular-nums." },
+      "title": { "displayName": "Title", "purpose": "Título de página (header mobile) e nomes de seção. Pequeno de propósito." },
+      "body": { "displayName": "Body", "purpose": "Descrições, conteúdo de lista, texto padrão." },
+      "label": { "displayName": "Label", "purpose": "Metadados, rótulos de total, chips. Uppercase tracking-wide só em rótulos curtos." }
+    },
+    "shadows": [
+      { "name": "apoio", "value": "0 1px 2px rgba(0,0,0,0.05)", "purpose": "Header fixo e bottom nav, para separá-los do conteúdo que rola por baixo." },
+      { "name": "hover", "value": "0 4px 6px rgba(0,0,0,0.07)", "purpose": "Resposta de toque nos cards-link da tela inicial. Não usar em cards de conteúdo." }
+    ],
+    "motion": [
+      { "name": "transition-colors", "value": "color/background 160ms cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Transição padrão de estado (hover, ativo). Toda interação usa isso." },
+      { "name": "presence-pulse", "value": "opacity 2s ease-in-out infinite", "purpose": "Ponto de presença online do outro usuário (animate-pulse)." }
+    ],
+    "breakpoints": [
+      { "name": "content", "value": "672px (max-w-2xl) — largura máxima travada de todo o app, mobile-first" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Card padrão",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Container branco sobre papel, separado por borda fina — sem sombra em repouso.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-row\"><span class=\"ds-card-label\">Total do mês</span><span class=\"ds-card-value\">R$ 4.280,00</span></div></div>",
+      "css": ".ds-card { background: #ffffff; border: 1px solid #f3f4f6; border-radius: 12px; padding: 12px 16px; } .ds-card-row { display: flex; align-items: baseline; justify-content: space-between; } .ds-card-label { font-size: 0.75rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.02em; } .ds-card-value { font-size: 1.25rem; font-weight: 600; color: #111827; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Card de gasto (assinatura)",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Linha de gasto: bloco de data à esquerda, descrição + valor em cima, chips embaixo. A linha inteira é clicável.",
+      "html": "<button class=\"ds-gasto\"><span class=\"ds-gasto-date\"><span class=\"ds-gasto-dow\">SEX</span><span class=\"ds-gasto-day\">14</span></span><span class=\"ds-gasto-main\"><span class=\"ds-gasto-top\"><span class=\"ds-gasto-desc\">Mercado da semana</span><span class=\"ds-gasto-val\">R$ 312,40</span></span><span class=\"ds-gasto-chips\"><span class=\"ds-chip-cat\" style=\"background:#8b5cf61a;color:#8b5cf6\"><span class=\"ds-dot\" style=\"background:#8b5cf6\"></span>Alimentação<span class=\"ds-sub\"> › Mercado</span></span><span class=\"ds-chip-resp\">Casal</span></span></span></button>",
+      "css": ".ds-gasto { width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 16px; border: none; border-bottom: 1px solid #f3f4f6; background: #fff; text-align: left; cursor: pointer; transition: background 160ms cubic-bezier(0.22,1,0.36,1); } .ds-gasto:hover { background: #f9fafb; } .ds-gasto-date { flex-shrink: 0; width: 36px; text-align: center; } .ds-gasto-dow { display: block; font-size: 10px; line-height: 1; color: #9ca3af; text-transform: uppercase; } .ds-gasto-day { display: block; font-size: 1rem; font-weight: 600; color: #1f2937; font-variant-numeric: tabular-nums; } .ds-gasto-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; } .ds-gasto-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; } .ds-gasto-desc { font-size: 0.875rem; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-gasto-val { flex-shrink: 0; font-size: 0.875rem; font-weight: 600; color: #111827; font-variant-numeric: tabular-nums; } .ds-gasto-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; } .ds-chip-cat { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 500; padding: 2px 6px; border-radius: 6px; } .ds-chip-cat .ds-dot { width: 6px; height: 6px; border-radius: 9999px; } .ds-chip-cat .ds-sub { font-weight: 400; opacity: 0.55; } .ds-chip-resp { font-size: 10px; font-weight: 500; color: #9ca3af; background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }"
+    },
+    {
+      "name": "Chip de filtro",
+      "kind": "chip",
+      "refersTo": "chip-filter",
+      "description": "Pílula de filtro com ponto de cor da entidade. Inativo claro, ativo tinta preta sólida.",
+      "html": "<div style=\"display:flex;gap:6px\"><button class=\"ds-chip\"><span class=\"ds-chip-dot\" style=\"background:#f97316\"></span>Deslocamento</button><button class=\"ds-chip ds-chip-on\"><span class=\"ds-chip-dot\" style=\"background:#10b981\"></span>Alimentação</button></div>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; padding: 4px 8px; border-radius: 9999px; border: 1px solid #e5e7eb; background: #fff; color: #4b5563; cursor: pointer; transition: all 160ms cubic-bezier(0.22,1,0.36,1); } .ds-chip-dot { width: 8px; height: 8px; border-radius: 9999px; flex-shrink: 0; } .ds-chip-on { background: #111827; color: #fff; border-color: #111827; }"
+    },
+    {
+      "name": "Toggle segmentado",
+      "kind": "nav",
+      "refersTo": "button-primary",
+      "description": "Seletor de visão (Cronológica / Categorias / Maiores). Segmento ativo é tinta preta sólida.",
+      "html": "<div class=\"ds-seg\"><button class=\"ds-seg-item ds-seg-on\">Cronológica</button><button class=\"ds-seg-item\">Categorias</button><button class=\"ds-seg-item\">Maiores</button></div>",
+      "css": ".ds-seg { display: inline-flex; width: 100%; border: 1px solid #e5e7eb; background: #fff; border-radius: 8px; padding: 2px; font-size: 0.875rem; } .ds-seg-item { flex: 1; padding: 8px 0; border: none; background: transparent; color: #6b7280; border-radius: 6px; cursor: pointer; transition: background 160ms cubic-bezier(0.22,1,0.36,1); } .ds-seg-on { background: #111827; color: #fff; }"
+    },
+    {
+      "name": "Botão adicionar (ghost tracejado)",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "CTA de 'Novo item' — borda tracejada de largura cheia que convida sem competir com o conteúdo.",
+      "html": "<button class=\"ds-add\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M12 5v14M5 12h14\"/></svg> Novo gasto</button>",
+      "css": ".ds-add { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.875rem; color: #6b7280; padding: 12px; background: #fff; border: 1px dashed #e5e7eb; border-radius: 12px; cursor: pointer; transition: color 160ms cubic-bezier(0.22,1,0.36,1); } .ds-add:hover { color: #1f2937; }"
+    },
+    {
+      "name": "Barra de progresso de orçamento",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Trilho cinza com preenchimento na cor semântica conforme o quanto do teto foi usado. Convenção única de dashboard.",
+      "html": "<div class=\"ds-prog-wrap\"><div class=\"ds-prog-head\"><span class=\"ds-prog-label\">Alimentação</span><span class=\"ds-prog-val\">R$ 820 / R$ 1.000</span></div><div class=\"ds-prog\"><div class=\"ds-prog-fill\" style=\"width:82%;background:#d97706\"></div></div></div>",
+      "css": ".ds-prog-wrap { display: flex; flex-direction: column; gap: 6px; } .ds-prog-head { display: flex; justify-content: space-between; font-size: 0.75rem; } .ds-prog-label { color: #374151; } .ds-prog-val { color: #9ca3af; font-variant-numeric: tabular-nums; } .ds-prog { height: 6px; background: #f3f4f6; border-radius: 9999px; overflow: hidden; } .ds-prog-fill { height: 100%; border-radius: 9999px; }"
+    },
+    {
+      "name": "Input de texto",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo padrão: branco, borda discreta, anel de foco do token.",
+      "html": "<input class=\"ds-input\" placeholder=\"ex: Alimentação, Deslocamento\" />",
+      "css": ".ds-input { width: 100%; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; font-size: 0.875rem; color: #111827; outline: none; transition: border-color 160ms, box-shadow 160ms; } .ds-input::placeholder { color: #9ca3af; } .ds-input:focus-visible { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(37,99,235,0.18); }"
+    },
+    {
+      "name": "Item de navegação inferior",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Aba do bottom nav: ícone + rótulo micro. Inativo apagado, ativo azul de navegação.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item ds-nav-on\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\"/></svg><span>Home</span></a><a class=\"ds-nav-item\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/></svg><span>Timeline</span></a></nav>",
+      "css": ".ds-nav { display: flex; background: #fff; border-top: 1px solid #f3f4f6; } .ds-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 10px 0; color: #9ca3af; text-decoration: none; transition: color 160ms cubic-bezier(0.22,1,0.36,1); } .ds-nav-item span { font-size: 10px; font-weight: 500; letter-spacing: 0.02em; } .ds-nav-item:hover { color: #4b5563; } .ds-nav-on { color: #2563eb; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "O caderno de contas da casa",
+    "overview": "O PlanFin se lê como um caderno de contas de uma casa: tinta sobre papel. O fundo é um cinza-papel calmo (#f9fafb), o conteúdo é tinta quase-preta (#111827), e a cor só aparece onde carrega significado — dinheiro que entra, dinheiro que sai, e a etiqueta de cada categoria. Nada é colorido por decoração. É um app feito à mão, para uma casa, usado no celular com uma mão só. A densidade é confortável mas séria; o calor vem do tom (português de quem mora junto, a foto da Duda na navegação), nunca de pastéis ou ilustrações. O sistema rejeita a grade árida do Excel, o azul-marinho frio de banco, o template SaaS e o excesso fofo/infantil.",
+    "keyCharacteristics": [
+      "Papel-e-tinta: neutros sóbrios de base, cor só onde há significado.",
+      "O estado ativo/selecionado é tinta preta sólida (#111827), não uma cor.",
+      "Mobile-first de verdade: largura travada em max-w-2xl, bottom nav, alvos generosos.",
+      "tabular-nums em todo valor monetário — os números são o conteúdo principal.",
+      "Profundidade por borda fina (#f3f4f6) e camada tonal (papel vs. branco), quase sem sombra.",
+      "Chips de duas cores como assinatura: tinta da etiqueta a 10% no fundo, cheia no texto."
+    ],
+    "rules": [
+      { "name": "A Regra da Cor com Significado", "body": "Cor só aparece quando responde a uma pergunta: isso é entrada ou saída? estourei o teto? que categoria é esta? Se um elemento for colorido sem responder a nada, ele volta para a tinta. O fundo nunca é colorido.", "section": "colors" },
+      { "name": "A Regra da Tinta Ativa", "body": "O estado selecionado é #111827 sólido com texto branco. Azul é reservado para navegação. Nunca pinte um item ativo com a cor da seção.", "section": "colors" },
+      { "name": "A Regra dos Números Tabulares", "body": "Todo valor monetário usa tabular-nums. Colunas de R$ alinham na vírgula e não 'dançam' ao atualizar em tempo real. Os números são o produto.", "section": "typography" },
+      { "name": "A Regra do Plano por Padrão", "body": "Superfícies são planas em repouso. Se você está alcançando uma sombra para 'dar destaque' a um card de conteúdo, use uma borda #f3f4f6 ou o fundo papel #f9fafb. Sombra é resposta a estado, não enfeite.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do manter o fundo papel #f9fafb e cards brancos com borda #f3f4f6. Separe por borda e tom, não por sombra.",
+      "Do usar tabular-nums em todo R$, com a tinta #111827 em peso semibold para o valor.",
+      "Do reservar cor para significado: verde entra, vermelho sai, azul navega, âmbar avisa.",
+      "Do pintar o estado ativo/selecionado de tinta preta sólida (bg-gray-900 text-white).",
+      "Do usar o chip de duas tintas (cor a 10% no fundo, cheia no texto) para categorias e formas.",
+      "Do projetar para o polegar: max-w-2xl, bottom nav, alvos ≥40px, pb-32 de respiro.",
+      "Do manter o mesmo vocabulário (card, chip, toggle, total) em todas as telas."
+    ],
+    "donts": [
+      "Don't entregar a grade árida do Excel: números soltos sem hierarquia nem respiro.",
+      "Don't virar app de banco frio: azul-marinho institucional, tom corporativo e distante.",
+      "Don't cair no template SaaS: cards idênticos repetidos, KPI gigante com gradiente, eyebrow maiúsculo tracked acima de cada seção.",
+      "Don't exagerar no fofo/infantil: pastéis em excesso, ilustrações cartoon, emojis por toda parte.",
+      "Don't usar background-clip: text com gradiente nem glassmorphism decorativo dentro do app.",
+      "Don't pintar de cinza-claro texto de corpo sobre fundo claro: corpo ≥ 4.5:1. Use #374151+, não #9ca3af.",
+      "Don't usar border-left/right colorida >1px como faixa de acento.",
+      "Don't sinalizar só por cor: saldo negativo, estouro e status sempre reforçam com texto, ícone ou peso."
+    ]
+  }
+}

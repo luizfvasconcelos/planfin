@@ -9,6 +9,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog"
+import { CalendarMinus, CalendarPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -51,18 +52,20 @@ export function RangeManager({ settings, onRemoveStart, onExtendEnd }: Props) {
       <Button
         variant="outline"
         size="sm"
-        className="flex-1 text-xs"
+        className="flex-1 gap-1.5 text-xs text-gray-600"
         onClick={() => { setRemoveDate(addDays(settings.start_date, 1)); setRemoveOpen(true) }}
       >
-        Remover dias do início
+        <CalendarMinus size={14} />
+        Remover do início
       </Button>
       <Button
         variant="outline"
         size="sm"
-        className="flex-1 text-xs"
+        className="flex-1 gap-1.5 border-dashed text-xs text-gray-600"
         onClick={() => { setAddDaysCount("30"); setAddOpen(true) }}
       >
-        Adicionar dias no final
+        <CalendarPlus size={14} />
+        Adicionar no final
       </Button>
 
       {/* Remove dialog */}

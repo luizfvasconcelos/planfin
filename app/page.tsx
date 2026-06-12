@@ -1,8 +1,29 @@
 "use client"
 
 import Link from "next/link"
-import { CalendarDays, Receipt, Wallet, Target } from "lucide-react"
+import { CalendarDays, Receipt, Wallet, Target, ChevronRight } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
+import type { CSSProperties } from "react"
 import { createClient } from "@/lib/supabase/client"
+
+interface Section {
+  href: string
+  title: string
+  sub: string
+  color: string
+  icon?: LucideIcon
+  avatarSrc?: string
+}
+
+// Cor de seção do DESIGN.md (timeline azul, fixas âmbar, gastos roxo,
+// orçamento rosa, Duda verde). A cor vira a âncora visual de cada card.
+const sections: Section[] = [
+  { href: "/timeline", title: "Timeline", sub: "Fluxo de caixa diário", color: "#2563eb", icon: CalendarDays },
+  { href: "/contas-fixas", title: "Contas Fixas", sub: "Despesas recorrentes", color: "#d97706", icon: Receipt },
+  { href: "/gastos", title: "Gastos Variáveis", sub: "Registro do dia-a-dia", color: "#9333ea", icon: Wallet },
+  { href: "/orcamento", title: "Orçamento", sub: "Teto por período", color: "#e11d48", icon: Target },
+  { href: "/faturamento", title: "Faturamento Duda", sub: "Renda variável diária", color: "#16a34a", avatarSrc: "/duda.png" },
+]
 
 export default function HomePage() {
   async function handleLogout() {
@@ -26,85 +47,56 @@ export default function HomePage() {
       </header>
 
       <main className="flex-1 flex flex-col justify-center max-w-2xl w-full mx-auto px-5 pb-10 gap-4">
-        <div className="text-center mb-4">
-          <div className="inline-block px-7 py-4 rounded-3xl bg-white/85 backdrop-blur-md shadow-lg border border-white/80">
-            <h1 className="text-4xl font-extrabold tracking-tight text-gray-900">
-              PlanFin
-            </h1>
-            <p className="text-xs text-gray-500 mt-0.5">Controle de fluxo de caixa</p>
+        <div className="mb-2 text-center">
+          <div className="w-full rounded-2xl border border-white/60 bg-white/75 backdrop-blur-md px-6 py-7 shadow-[0_4px_24px_rgba(17,24,39,0.08)]">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-gray-400">Controle de Finanças</p>
+            <h1 className="text-5xl font-extrabold tracking-tighter text-gray-900 mt-1.5 leading-none">PlanFin</h1>
           </div>
         </div>
 
-        <Link
-          href="/timeline"
-          className="group bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-200 transition-all px-6 py-7 flex items-center gap-5"
-        >
-          <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-100 transition-colors">
-            <CalendarDays size={28} />
-          </div>
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold text-gray-900">Timeline</h2>
-            <p className="text-sm text-gray-500">Fluxo de caixa diário</p>
-          </div>
-        </Link>
-
-        <Link
-          href="/contas-fixas"
-          className="group bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-amber-200 transition-all px-6 py-7 flex items-center gap-5"
-        >
-          <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:bg-amber-100 transition-colors">
-            <Receipt size={28} />
-          </div>
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold text-gray-900">Contas Fixas</h2>
-            <p className="text-sm text-gray-500">Despesas recorrentes</p>
-          </div>
-        </Link>
-
-        <Link
-          href="/gastos"
-          className="group bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-purple-200 transition-all px-6 py-7 flex items-center gap-5"
-        >
-          <div className="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 group-hover:bg-purple-100 transition-colors">
-            <Wallet size={28} />
-          </div>
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold text-gray-900">Gastos Variáveis</h2>
-            <p className="text-sm text-gray-500">Registro do dia-a-dia</p>
-          </div>
-        </Link>
-
-        <Link
-          href="/orcamento"
-          className="group bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-rose-200 transition-all px-6 py-7 flex items-center gap-5"
-        >
-          <div className="w-14 h-14 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 group-hover:bg-rose-100 transition-colors">
-            <Target size={28} />
-          </div>
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold text-gray-900">Orçamento</h2>
-            <p className="text-sm text-gray-500">Teto por período</p>
-          </div>
-        </Link>
-
-        <Link
-          href="/faturamento"
-          className="group bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-green-200 transition-all px-6 py-7 flex items-center gap-5"
-        >
-          <div className="w-14 h-14 rounded-full overflow-hidden ring-2 ring-green-100 group-hover:ring-green-200 transition-colors flex-shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/duda.png"
-              alt="Duda"
-              className="w-full h-full object-cover object-[50%_22%]"
-            />
-          </div>
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold text-gray-900">Faturamento Duda</h2>
-            <p className="text-sm text-gray-500">Renda variável diária</p>
-          </div>
-        </Link>
+        {sections.map((section, i) => (
+          <SectionCard key={section.href} section={section} index={i} />
+        ))}
       </main>
     </div>
+  )
+}
+
+function SectionCard({ section, index }: { section: Section; index: number }) {
+  const { href, title, sub, color, icon: Icon, avatarSrc } = section
+
+  return (
+    <Link
+      href={href}
+      style={{ animationDelay: `${index * 60}ms` } as CSSProperties}
+      className="group flex items-center gap-4 rounded-2xl border border-white/60 bg-white/70 backdrop-blur-md px-5 py-5 shadow-[0_4px_24px_rgba(17,24,39,0.08)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:bg-white/85 hover:shadow-[0_10px_34px_rgba(17,24,39,0.14)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-500"
+    >
+      {avatarSrc ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={avatarSrc}
+          alt={title}
+          className="h-14 w-14 shrink-0 rounded-full object-cover object-[50%_22%]"
+          style={{ boxShadow: `0 0 0 2px ${color}, 0 6px 16px ${color}40` }}
+        />
+      ) : Icon ? (
+        <div
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-white transition-transform duration-300 ease-out group-hover:scale-105"
+          style={{ backgroundColor: color, boxShadow: `0 6px 16px ${color}55` }}
+        >
+          <Icon size={26} strokeWidth={2.2} />
+        </div>
+      ) : null}
+
+      <div className="min-w-0 flex-1">
+        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+        <p className="text-sm text-gray-600">{sub}</p>
+      </div>
+
+      <ChevronRight
+        size={20}
+        className="shrink-0 text-gray-400 transition-transform duration-300 ease-out group-hover:translate-x-0.5"
+      />
+    </Link>
   )
 }

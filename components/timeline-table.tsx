@@ -1,5 +1,6 @@
 "use client"
 
+import { TrendingDown } from "lucide-react"
 import { formatBRL, formatDateShort, getDayOfWeek } from "@/lib/utils"
 import type { DayRow } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -87,7 +88,7 @@ export function TimelineTable({ rows, onRowClick }: Props) {
                   "text-sm font-semibold",
                   negative ? "text-red-400" : row.isToday ? "text-gray-900" : "text-gray-800"
                 )}>
-                  {formatDateShort(row.date)} {isBreakPoint && "⚠️"}
+                  {formatDateShort(row.date)}
                 </span>
                 <span className={cn(
                   "text-xs font-medium",
@@ -95,6 +96,9 @@ export function TimelineTable({ rows, onRowClick }: Props) {
                 )}>
                   {getDayOfWeek(row.date)}
                 </span>
+                {isBreakPoint && (
+                  <TrendingDown size={14} strokeWidth={2.4} className="self-center text-red-600" />
+                )}
               </div>
             </div>
 
